@@ -14,4 +14,4 @@ libraryDependencies += "org.nd4j" % "nd4j-native-platform" % "0.8.0"
 //libraryDependencies += "org.nd4j" % "nd4j-cuda-8.0" % "0.8.0"
 //libraryDependencies += "org.nd4j" % "nd4j-cuda-8.0-platform" % "0.8.0"
 
-fork := true
+// fork := true
