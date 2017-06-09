@@ -15,6 +15,7 @@ import scala.util.Random
 trait Cost {
   def function(a: Matrix, y: Matrix): Double
   def delta(a: Matrix, y: Matrix): Matrix
+  def name: String
 }
 
 object QuadraticCost extends Cost {
@@ -36,6 +37,8 @@ object QuadraticCost extends Cost {
     (a - y) * derivative(a)
   }
 
+  def name = "QuadraticCost"
+
 }
 
 object CrossEntropyCost extends Cost {
@@ -50,6 +53,8 @@ object CrossEntropyCost extends Cost {
     * Return the error delta from the output layer
     */
   override def delta(a: Matrix, y: Matrix): Matrix = a - y
+
+  def name = "CrossEntropyCost"
 }
 
 class Network(topology: List[Int], cost: Cost) {
@@ -164,37 +169,105 @@ class Network(topology: List[Int], cost: Cost) {
     }
   }
 
+  def totalCost(data: List[(Matrix, Matrix)], lambda: Double): Double = {
+
+    val ffCost: Double = data.foldLeft(0.0) {
+      case (c, (x, y)) =>
+        val a = feedForward(x).last
+        c + cost.function(a, y) / data.size
+    }
+
+    weights.foldLeft(ffCost) {
+      case (c, w) =>
+        c + .5 * (lambda / data.size) * w.norm2Number().doubleValue()
+    }
+  }
+
+  def accuracy(data: List[(Matrix, Matrix)]): Int = data.foldLeft(0) {
+    case (r, (x, y)) =>
+      val a = feedForward(x).last
+      val guess = argMax(a).getInt(0)
+      val truth = argMax(y).getInt(0)
+      if (guess == truth) r + 1 else r
+  }
+
+  /**
+    *
+    * Train the neural network using mini-batch stochastic gradient
+    * descent.  The trainingData is a list of tuples (x, y)
+    * representing the training inputs and the desired outputs.
+    * The method also accepts
+    * evaluation_data, usually either the validation or test
+    * data.  We can monitor the cost and accuracy on either the
+    * evaluation data or the training data, by setting the
+    * appropriate flags.  The method returns a tuple containing four
+    * lists: the (per-epoch) costs on the evaluation data, the
+    * accuracies on the evaluation data, the costs on the training
+    * data, and the accuracies on the training data.  All values are
+    * evaluated at the end of each training epoch.  So, for example,
+    * if we train for 30 epochs, then the first element of the tuple
+    * will be a 30-element list containing the cost on the
+    * evaluation data at the end of each epoch. Note that the lists
+    * are empty if the corresponding flag is not set.
+    */
   def sgd(trainingData: List[(Matrix, Matrix)],
           epochs: Int,
           miniBatchSize: Int,
           learningRate: Double,
           lambda: Double,
-          evaluationData: List[(Matrix, Int)] = List.empty): Unit = {
+          evaluationData: List[(Matrix, Matrix)] = List.empty,
+          monitorEvaluationCost: Boolean = false,
+          monitorEvaluationAccuracy: Boolean = false,
+          monitorTrainingCost: Boolean = false,
+          monitorTrainingAccuracy: Boolean = false): Unit = {
 
-    (1 to epochs).foreach { j =>
-      val t0 = System.currentTimeMillis()
-      println(s"Epoch $j starting")
+    (1 to epochs).foldLeft(Monitor()) {
+      case (monitor, epoch) =>
+        val t0 = System.currentTimeMillis()
+        val shuffled = Random.shuffle(trainingData)
+        shuffled.sliding(miniBatchSize, miniBatchSize).foreach { miniBatch =>
+          updateMiniBatch(miniBatch, learningRate, lambda, trainingData.size)
+        }
+        val t1 = System.currentTimeMillis()
+        println(s"Epoch $epoch completed in ${t1 - t0} ms.")
 
-      val shuffled = Random.shuffle(trainingData)
-      shuffled.sliding(miniBatchSize, miniBatchSize).foreach { miniBatch =>
-        updateMiniBatch(miniBatch, learningRate, lambda, trainingData.size)
-      }
-      val t1 = System.currentTimeMillis()
+        if (monitorTrainingCost) {
+          val c = totalCost(trainingData, lambda)
+          println(s"Cost on training data: $c")
+        }
 
-      println(s"Epoch $j complete (${t1 - t0})")
+        if (monitorTrainingAccuracy) {
+          val a = accuracy(trainingData)
+          println(s"Accuracy on training data: $a / ${trainingData.size}")
+        }
+
+        if (monitorEvaluationCost) {
+          val c = totalCost(evaluationData, lambda)
+          println(s"Cost on evaluation data: $c")
+        }
+
+        if (monitorEvaluationAccuracy) {
+          val a = accuracy(evaluationData)
+          println(s"Accuracy on evaluation data: $a / ${evaluationData.size}")
+        }
+
+        monitor
     }
   }
 
 }
 
+case class Monitor(evaluationCost: List[Double] = List.empty,
+                   evaluationAccuracy: List[Double] = List.empty,
+                   trainingCost: List[Double] = List.empty,
+                   trainingAccuracy: List[Double] = List.empty)
+
 object Network {
 
   def derivative(z: Matrix): Matrix = z * (-z + 1.0)
 
-  def oneHotEncoded(x: Int, base: Int = 10): Matrix = {
-    val v = zeros(1, base)
-    v.putScalar(x, 1.0)
-  }
+  def vectorize(x: Int, base: Int = 10): Matrix =
+    zeros(1, base) putScalar (x, 1.0)
 
   def gzis(fname: String): GZIPInputStream =
     new GZIPInputStream(new BufferedInputStream(new FileInputStream(fname)))
@@ -208,20 +281,37 @@ object Network {
   }
 
   def main(args: Array[String]) {
-    val topology = List(784, 30, 30, 10)
+    val topology = List(784, 100, 10)
     val epochs = 30
     val batchSize = 10
-    val learningRate = 3.0
+    val learningRate = 0.5
     val lambda = 0.0
     val cost = CrossEntropyCost
 
     val nn = new Network(topology, cost)
 
-    val trainingData = loadData("data/mnist_train.csv.gz").map {
-      case (x, y) => (x, oneHotEncoded(y))
+    val tvData = loadData("data/mnist_train.csv.gz").map {
+      case (x, y) => (x, vectorize(y))
     }
 
-    nn.sgd(trainingData, epochs, batchSize, learningRate, lambda)
+    val (trainingData, validationData) = tvData.splitAt(50000)
+
+    val testData = loadData("data/mnist_test.csv.gz").map {
+      case (x, y) => (x, vectorize(y))
+    }
+
+    nn.sgd(
+      trainingData,
+      epochs,
+      batchSize,
+      learningRate,
+      lambda,
+      testData,
+      monitorEvaluationCost = false,
+      monitorEvaluationAccuracy = true,
+      monitorTrainingCost = false,
+      monitorTrainingAccuracy = false
+    )
 
   }
 

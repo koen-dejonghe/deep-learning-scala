@@ -1,4 +1,4 @@
-name := """deep-learning-akka"""
+name := """deep-learning-scala"""
 
 version := "1.0-SNAPSHOT"
 
