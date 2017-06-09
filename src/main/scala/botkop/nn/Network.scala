@@ -8,6 +8,7 @@ import org.nd4j.linalg.factory.Nd4j._
 import org.nd4j.linalg.ops.transforms.Transforms._
 import org.nd4s.Implicits._
 
+import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.language.postfixOps
 import scala.util.Random
@@ -219,10 +220,11 @@ class Network(topology: List[Int], cost: Cost) {
           monitorEvaluationCost: Boolean = false,
           monitorEvaluationAccuracy: Boolean = false,
           monitorTrainingCost: Boolean = false,
-          monitorTrainingAccuracy: Boolean = false): Unit = {
+          monitorTrainingAccuracy: Boolean = false): Monitor = {
 
-    (1 to epochs).foldLeft(Monitor()) {
-      case (monitor, epoch) =>
+    val monitor = Monitor()
+
+    (1 to epochs).foreach { epoch =>
         val t0 = System.currentTimeMillis()
         val shuffled = Random.shuffle(trainingData)
         shuffled.sliding(miniBatchSize, miniBatchSize).foreach { miniBatch =>
@@ -234,33 +236,35 @@ class Network(topology: List[Int], cost: Cost) {
         if (monitorTrainingCost) {
           val c = totalCost(trainingData, lambda)
           println(s"Cost on training data: $c")
+          monitor.trainingCost += c
         }
 
         if (monitorTrainingAccuracy) {
           val a = accuracy(trainingData)
           println(s"Accuracy on training data: $a / ${trainingData.size}")
+          monitor.trainingAccuracy += a
         }
 
         if (monitorEvaluationCost) {
           val c = totalCost(evaluationData, lambda)
           println(s"Cost on evaluation data: $c")
+          monitor.evaluationCost += c
         }
 
         if (monitorEvaluationAccuracy) {
           val a = accuracy(evaluationData)
           println(s"Accuracy on evaluation data: $a / ${evaluationData.size}")
+          monitor.evaluationAccuracy += a
         }
-
-        monitor
     }
+    monitor
   }
-
 }
 
-case class Monitor(evaluationCost: List[Double] = List.empty,
-                   evaluationAccuracy: List[Double] = List.empty,
-                   trainingCost: List[Double] = List.empty,
-                   trainingAccuracy: List[Double] = List.empty)
+case class Monitor(evaluationCost: ListBuffer[Double] = ListBuffer.empty,
+                   evaluationAccuracy: ListBuffer[Double] = ListBuffer.empty,
+                   trainingCost: ListBuffer[Double] = ListBuffer.empty,
+                   trainingAccuracy: ListBuffer[Double] = ListBuffer.empty)
 
 object Network {
 
@@ -302,25 +306,27 @@ object Network {
     val epochs = 30
     val batchSize = 10
     val learningRate = 0.5
-    val lambda = 0.0
+    val lambda = 0.5
     val cost = CrossEntropyCost
 
     val nn = new Network(topology, cost)
 
     val (trainingData, validationData, testData) = mnistData()
 
-    nn.sgd(
+    val monitor = nn.sgd(
       trainingData,
       epochs,
       batchSize,
       learningRate,
       lambda,
-      testData,
+      validationData,
       monitorEvaluationCost = false,
       monitorEvaluationAccuracy = true,
       monitorTrainingCost = false,
       monitorTrainingAccuracy = false
     )
+
+    println(monitor)
 
   }
 
