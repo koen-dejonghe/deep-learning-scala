@@ -280,15 +280,9 @@ object Network {
     } toList
   }
 
-  def main(args: Array[String]) {
-    val topology = List(784, 100, 10)
-    val epochs = 30
-    val batchSize = 10
-    val learningRate = 0.5
-    val lambda = 0.0
-    val cost = CrossEntropyCost
-
-    val nn = new Network(topology, cost)
+  def mnistData(): (List[(Matrix, Matrix)],
+                    List[(Matrix, Matrix)],
+                    List[(Matrix, Matrix)]) = {
 
     val tvData = loadData("data/mnist_train.csv.gz").map {
       case (x, y) => (x, vectorize(y))
@@ -299,6 +293,21 @@ object Network {
     val testData = loadData("data/mnist_test.csv.gz").map {
       case (x, y) => (x, vectorize(y))
     }
+
+    (trainingData, validationData, testData)
+  }
+
+  def main(args: Array[String]) {
+    val topology = List(784, 100, 10)
+    val epochs = 30
+    val batchSize = 10
+    val learningRate = 0.5
+    val lambda = 0.0
+    val cost = CrossEntropyCost
+
+    val nn = new Network(topology, cost)
+
+    val (trainingData, validationData, testData) = mnistData()
 
     nn.sgd(
       trainingData,
