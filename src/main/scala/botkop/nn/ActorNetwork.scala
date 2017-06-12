@@ -1,6 +1,7 @@
 package botkop.nn
 
 import akka.actor.{Actor, ActorSystem, Props}
+import botkop.nn.Network.mnistData
 import org.nd4j.linalg.api.ndarray.{INDArray => Matrix}
 import org.nd4j.linalg.factory.Nd4j._
 import org.nd4j.linalg.ops.transforms.Transforms._
@@ -27,16 +28,21 @@ object ActorNetwork extends App {
 
   val collector = system.actorOf(Collector.props())
 
-  hiddenLayer ! Wiring(None, Some(outputLayer))
-  outputLayer ! Wiring(Some(hiddenLayer), None)
+  hiddenLayer ! Wiring(Some(outputLayer), None)
+  outputLayer ! Wiring(None, Some(hiddenLayer))
+
+  val (trainingData, validationData, testData) = mnistData()
+
+  sgd(trainingData, 2, hyperParameters.miniBatchSize)
 
   def updateMiniBatch(miniBatch: List[(Matrix, Matrix)]): Unit = {
     miniBatch.foreach { case (x, y) =>
         hiddenLayer ! FeedForward(x, y)
     }
-    hiddenLayer ! UpdateWeightsAndBiases
+
   }
 
+  /*
   def accuracy(data: List[(Matrix, Matrix)]): Int = data.foldLeft(0) {
     case (r, (x, y)) =>
       val a =
@@ -45,6 +51,7 @@ object ActorNetwork extends App {
       val truth = argMax(y).getInt(0)
       if (guess == truth) r + 1 else r
   }
+  */
 
   def sgd(trainingData: List[(Matrix, Matrix)],
           epochs: Int,
@@ -60,8 +67,8 @@ object ActorNetwork extends App {
       val t1 = System.currentTimeMillis()
       println(s"Epoch $epoch completed in ${t1 - t0} ms.")
 
-      val a = accuracy(trainingData)
-      println(s"Accuracy on training data: $a / ${trainingData.size}")
+      // val a = accuracy(trainingData)
+      // println(s"Accuracy on training data: $a / ${trainingData.size}")
     }
   }
 

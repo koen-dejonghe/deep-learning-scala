@@ -12,9 +12,12 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
 
   val weights: Matrix = randn(shape.m, shape.n) / Math.sqrt(shape.n)
   val biases: Matrix = randn(shape.m, 1)
+  val incomingActivations: Matrix = zeros(shape.n, 1)
   val activations: Matrix = zeros(shape.m, 1)
   val nablaWeights: Matrix = zeros(shape.m, shape.n)
   val nablaBiases: Matrix = zeros(shape.m, 1)
+
+  var counter = 0
 
   override def receive: Receive = {
     case Wiring(fwd, bwd) =>
@@ -24,6 +27,7 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
   def wired(fwd: Option[ActorRef], bwd: Option[ActorRef]): Receive = {
 
     case FeedForward(x, y) =>
+      incomingActivations.assign(x)
       val z = (weights dot x) + biases
       val a = sigmoid(z)
       activations.assign(a)
@@ -32,48 +36,52 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
           actor ! FeedForward(a, y)
         case None =>
           // output layer
-          val delta = a - y // cross entropy cost
-          bwd.get ! DeltaBackward(a, delta)
+          val cost = a - y // cross entropy cost
+          val delta = weights.transpose() dot cost
+          bwd.get ! DeltaBackward(delta)
       }
 
-    case DeltaBackward(a, d) =>
-      val sp = derivative(a)
-      val delta = (weights.transpose() dot d) * sp
+    case DeltaBackward(d) =>
+      println(s"bwd $counter " + System.currentTimeMillis())
+      val sp = derivative(activations)
+      val delta = d * sp
+
+      bwd match {
+        case Some(actor) =>
+          actor ! DeltaBackward(weights.transpose() dot delta)
+        case None => // input layer
+      }
 
       val nb = delta
-      val nw = delta dot activations.transpose()
+      val nw = delta dot incomingActivations.transpose()
 
       nablaBiases += nb
       nablaWeights += nw
 
-      bwd match {
-        case Some(actor) =>
-          actor ! DeltaBackward(activations, delta)
-        case None => // input layer
+      counter += 1
+      if (counter % hp.miniBatchSize == 0) {
+        updateWeightsAndBiases()
       }
-
-    case UpdateWeightsAndBiases =>
-      fwd match {
-        case Some(actor) =>
-          actor ! UpdateWeightsAndBiases
-        case None => // done
-      }
-
-      biases -= (nablaBiases * hp.lm)
-      weights *= hp.lln
-      weights -= nablaWeights * hp.lm
-
 
     case Guess(x, collector) =>
       val z = (weights dot x) + biases
       val a = sigmoid(z)
       fwd match {
         case Some(fwdLayer) =>
-          Guess(a, collector)
+          fwdLayer ! Guess(a, collector)
         case None =>
           collector ! a
       }
 
+  }
+
+  def updateWeightsAndBiases(): Unit = {
+    biases -= nablaBiases * hp.lm
+    weights *= hp.lln
+    weights -= nablaWeights * hp.lm
+
+    nablaWeights.assign(zeros(shape.m, shape.n))
+    nablaBiases.assign(zeros(shape.m, 1))
   }
 
   def derivative(z: Matrix): Matrix = z * (-z + 1.0)
@@ -85,7 +93,7 @@ object Layer {
 }
 
 case class FeedForward(x: Matrix, y: Matrix)
-case class DeltaBackward(a: Matrix, delta: Matrix)
+case class DeltaBackward(delta: Matrix)
 case object UpdateWeightsAndBiases
 
 case class Guess(x: Matrix, collector: ActorRef)

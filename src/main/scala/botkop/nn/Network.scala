@@ -82,11 +82,14 @@ class Network(topology: List[Int], cost: Cost) {
     val biases: List[Matrix] =
       topology.tail.map(size => randn(size, 1))
 
+    println("biases ==> " + biases.size)
+
     val weights: List[Matrix] = topology
       .sliding(2)
       .map(t => (t.head, t(1)))
       .map { case (x, y) => randn(y, x) / Math.sqrt(x) }
       .toList
+    println("weights ==> " + weights.size)
 
     (biases, weights)
   }
