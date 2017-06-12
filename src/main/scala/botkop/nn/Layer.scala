@@ -36,36 +36,55 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
           actor ! FeedForward(a, y)
         case None =>
           // output layer
-          val cost = a - y // cross entropy cost
-          val delta = weights.transpose() dot cost
-          bwd.get ! DeltaBackward(delta)
+          val delta = a - y // cross entropy cost
+          val nb = delta
+          val nw = delta dot incomingActivations.transpose()
+          bwd.get ! DeltaBackward(weights.transpose() dot nb)
+
+          // on line
+          biases -= nb * hp.learningRate
+          weights -= nw * hp.learningRate
       }
 
     case DeltaBackward(d) =>
       println(s"bwd $counter ")
       val sp = derivative(activations)
-      val delta = d * sp
+//      val delta = (weights.transpose() dot inb) * sp
 
+      /*
       bwd match {
         case Some(actor) =>
-          actor ! DeltaBackward(weights.transpose() dot delta)
+          //actor ! DeltaBackward(weights.transpose() dot delta)
+          println("AAAAAAAAAAAAAAAAAAAAA")
         case None => // input layer
       }
+      */
+
+      val delta = d * sp
 
       val nb = delta
       val nw = delta dot incomingActivations.transpose()
 
+      biases -= nb * hp.learningRate
+      weights -= nw * hp.learningRate
+
+      counter += 1
+
+      /*
       nablaBiases += nb
       nablaWeights += nw
 
-      counter += 1
       if (counter % hp.miniBatchSize == 0) {
         updateWeightsAndBiases()
       }
+      */
 
     case Guess(x) =>
+//      val _x = randn(x.shape())
+
       val z = (weights dot x) + biases
       val a = sigmoid(z)
+//      val a = z
 
       println("a = " + a)
 

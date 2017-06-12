@@ -16,9 +16,6 @@ import scala.io.StdIn
 import scala.language.postfixOps
 import scala.util.Random
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
-
 object ActorNetwork extends App {
 
   val system: ActorSystem = ActorSystem()
@@ -56,8 +53,6 @@ object ActorNetwork extends App {
       implicit val timeout = Timeout(1 seconds)
       val f = hiddenLayer ? Guess(x)
       val a = Await.result(f, timeout.duration).asInstanceOf[Matrix]
-
-      println(a)
 
       val guess = argMax(a).getInt(0)
       val truth = argMax(y).getInt(0)
