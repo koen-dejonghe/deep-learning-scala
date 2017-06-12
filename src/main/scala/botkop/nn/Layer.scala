@@ -42,7 +42,7 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
       }
 
     case DeltaBackward(d) =>
-      println(s"bwd $counter " + System.currentTimeMillis())
+      println(s"bwd $counter ")
       val sp = derivative(activations)
       val delta = d * sp
 
@@ -60,25 +60,28 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
 
       counter += 1
       if (counter % hp.miniBatchSize == 0) {
-        updateWeightsAndBiases()
+//        updateWeightsAndBiases()
       }
 
-    case Guess(x, collector) =>
+    case Guess(x) =>
       val z = (weights dot x) + biases
       val a = sigmoid(z)
+
+      println("a = " + a)
+
       fwd match {
         case Some(fwdLayer) =>
-          fwdLayer ! Guess(a, collector)
+          fwdLayer forward Guess(a)
         case None =>
-          collector ! a
+          sender ! a
       }
 
   }
 
   def updateWeightsAndBiases(): Unit = {
-    biases -= nablaBiases * hp.lm
+    biases -= (nablaBiases * hp.lm)
     weights *= hp.lln
-    weights -= nablaWeights * hp.lm
+    weights -= (nablaWeights * hp.lm)
 
     nablaWeights.assign(zeros(shape.m, shape.n))
     nablaBiases.assign(zeros(shape.m, 1))
@@ -96,6 +99,6 @@ case class FeedForward(x: Matrix, y: Matrix)
 case class DeltaBackward(delta: Matrix)
 case object UpdateWeightsAndBiases
 
-case class Guess(x: Matrix, collector: ActorRef)
+case class Guess(x: Matrix)
 
 case class Wiring(fwd: Option[ActorRef], bwd: Option[ActorRef])

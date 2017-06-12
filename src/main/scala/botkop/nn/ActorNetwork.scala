@@ -1,13 +1,23 @@
 package botkop.nn
 
 import akka.actor.{Actor, ActorSystem, Props}
+import akka.util.Timeout
 import botkop.nn.Network.mnistData
 import org.nd4j.linalg.api.ndarray.{INDArray => Matrix}
 import org.nd4j.linalg.factory.Nd4j._
 import org.nd4j.linalg.ops.transforms.Transforms._
 import org.nd4s.Implicits._
 
+import scala.concurrent.duration._
+import akka.pattern.ask
+
+import scala.concurrent.Await
+import scala.io.StdIn
+import scala.language.postfixOps
 import scala.util.Random
+
+import scala.concurrent.ExecutionContext.Implicits.global
+
 
 object ActorNetwork extends App {
 
@@ -26,14 +36,12 @@ object ActorNetwork extends App {
   val outputLayer =
     system.actorOf(Layer.props(Shape(30, 10), hyperParameters))
 
-  val collector = system.actorOf(Collector.props())
-
   hiddenLayer ! Wiring(Some(outputLayer), None)
   outputLayer ! Wiring(None, Some(hiddenLayer))
 
   val (trainingData, validationData, testData) = mnistData()
 
-  sgd(trainingData, 2, hyperParameters.miniBatchSize)
+  sgd(trainingData, 30, hyperParameters.miniBatchSize, testData)
 
   def updateMiniBatch(miniBatch: List[(Matrix, Matrix)]): Unit = {
     miniBatch.foreach { case (x, y) =>
@@ -42,16 +50,19 @@ object ActorNetwork extends App {
 
   }
 
-  /*
+
   def accuracy(data: List[(Matrix, Matrix)]): Int = data.foldLeft(0) {
     case (r, (x, y)) =>
-      val a =
-      val guess = argMax(a).getInt(0)
+      implicit val timeout = Timeout(1 seconds)
+      val f = hiddenLayer ? Guess(x)
+      val a = Await.result(f, timeout.duration).asInstanceOf[Matrix]
 
+      println(a)
+
+      val guess = argMax(a).getInt(0)
       val truth = argMax(y).getInt(0)
       if (guess == truth) r + 1 else r
   }
-  */
 
   def sgd(trainingData: List[(Matrix, Matrix)],
           epochs: Int,
@@ -67,8 +78,13 @@ object ActorNetwork extends App {
       val t1 = System.currentTimeMillis()
       println(s"Epoch $epoch completed in ${t1 - t0} ms.")
 
-      // val a = accuracy(trainingData)
-      // println(s"Accuracy on training data: $a / ${trainingData.size}")
+      StdIn.readLine()
+
+//      Thread.sleep(25000)
+      val a = accuracy(evaluationData)
+      println(s"Accuracy on evaluation data: $a / ${evaluationData.size}")
+
+      StdIn.readLine()
     }
   }
 
@@ -83,13 +99,3 @@ case class HyperParameters(miniBatchSize: Int,
   val lln: Double = 1.0 - learningRate * (lambda / trainingDataSize)
 }
 
-class Collector extends Actor {
-  override def receive: Receive = {
-    case o =>
-      println(o)
-  }
-}
-
-object Collector {
-  def props(): Props = Props(new Collector())
-}
