@@ -60,7 +60,7 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
 
       counter += 1
       if (counter % hp.miniBatchSize == 0) {
-//        updateWeightsAndBiases()
+        updateWeightsAndBiases()
       }
 
     case Guess(x) =>
