@@ -1,11 +1,10 @@
 
 
-Scala implementation of Michael Nielsen's sample program in in his book 'Neural Networks and Deep Learning'.
+Scala implementation of Michael Nielsen's sample program in his book 'Neural Networks and Deep Learning'.
 
 See
 http://neuralnetworksanddeeplearning.com
 
 Python code is here:
 https://github.com/mnielsen/neural-networks-and-deep-learning
-
 

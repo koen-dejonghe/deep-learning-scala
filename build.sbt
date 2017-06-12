@@ -9,6 +9,8 @@ scalaVersion := "2.11.11"
 classpathTypes += "maven-plugin"
 
 
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.2"
+
 libraryDependencies += "org.nd4j" %% "nd4s" % "0.8.0"
 libraryDependencies += "org.nd4j" % "nd4j-native-platform" % "0.8.0"
 //libraryDependencies += "org.nd4j" % "nd4j-cuda-8.0" % "0.8.0"
