@@ -1,4 +1,4 @@
-package botkop.nn.akka
+package botkop.nn.actors
 
 import akka.actor.ActorSystem
 import akka.pattern.ask

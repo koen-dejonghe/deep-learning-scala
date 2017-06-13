@@ -1,4 +1,4 @@
-package botkop.nn.akka.streams
+package botkop.nn.actors.streams
 
 import botkop.nn.Network.mnistData
 import akka.stream._

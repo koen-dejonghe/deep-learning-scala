@@ -3,6 +3,9 @@ package botkop.nn
 import java.io.{BufferedInputStream, FileInputStream}
 import java.util.zip.GZIPInputStream
 
+import akka.{Done, NotUsed}
+import akka.actor.ActorSystem
+import akka.stream.{ActorMaterializer, scaladsl}
 import org.nd4j.linalg.api.ndarray.{INDArray => Matrix}
 import org.nd4j.linalg.factory.Nd4j._
 import org.nd4j.linalg.ops.transforms.Transforms._
@@ -14,9 +17,9 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Random
 import scala.concurrent.ExecutionContext.Implicits.global
+import akka.stream.scaladsl.{Flow, Sink, Source => StreamSource}
 
-import akka.stream._
-import akka.stream.scaladsl._
+import scala.io.Source
 
 trait Cost {
   def function(a: Matrix, y: Matrix): Double
@@ -119,6 +122,7 @@ class Network(topology: List[Int], cost: Cost) {
     val inb = delta
     val inw = delta dot activations(activations.size - 2).transpose()
 
+    /*
     val (nablaBiases, nablaWeights) = (topology.size - 2 until 0 by -1)
       .foldLeft((List(inb), List(inw))) {
         case ((nbl, nwl), l) =>
@@ -131,21 +135,48 @@ class Network(topology: List[Int], cost: Cost) {
           val nw = delta dot activations(l - 1).transpose()
 
           (nb :: nbl, nw :: nwl)
+
       }
+    */
+
+    val source = StreamSource(topology.size - 2 until 0 by -1)
+
+    val sink = Sink
+      .fold[(List[Matrix], List[Matrix]), Int]((List(inb), List(inw))) {
+        case ((nbl, nwl), l) =>
+          val sp = derivative(activations(l))
+
+          // last added nb to nbl is the previous delta
+          val delta = (weights(l).transpose() dot nbl.head) * sp
+
+          val nb = delta
+          val nw = delta dot activations(l - 1).transpose()
+
+          (nb :: nbl, nw :: nwl)
+      }.async
+
+    val zzz = source.runWith(sink)
+
+    val (nablaBiases, nablaWeights) = Await.result(zzz, 5 seconds)
 
     (nablaBiases, nablaWeights)
   }
+
+  implicit val system = ActorSystem("QuickStart")
+  implicit val materializer = ActorMaterializer()
 
   def updateMiniBatch(miniBatch: List[(Matrix, Matrix)],
                       lm: Double,
                       lln: Double): Unit = {
 
-    val nablaBiases = biases.map(b => zeros(b.shape(): _*))
-    val nablaWeights = weights.map(w => zeros(w.shape(): _*))
+    /*
+    val nablaBiases: List[Matrix] = biases.map(b => zeros(b.shape(): _*))
+    val nablaWeights: List[Matrix] = weights.map(w => zeros(w.shape(): _*))
 
     miniBatch.foreach {
       case (x, y) =>
-        val (deltaNablaB, deltaNablaW) = backProp(x, y)
+        val (deltaNablaB: List[Matrix], deltaNablaW: List[Matrix]) =
+          backProp(x, y)
 
         nablaBiases.zip(deltaNablaB).foreach {
           case (nb, dnb) =>
@@ -157,8 +188,61 @@ class Network(topology: List[Int], cost: Cost) {
             nw += dnw
         }
     }
+    */
 
-    val source = Source(miniBatch)
+    /*
+    lazy val inb: List[Matrix] = biases.map(b => zeros(b.shape(): _*))
+    lazy val inw: List[Matrix] = weights.map(w => zeros(w.shape(): _*))
+
+    val (nablaBiases, nablaWeights) = miniBatch
+      .map {
+        case (x, y) => backProp(x, y)
+      }
+      .foldLeft((inb, inw)) {
+        case ((zbl, zwl), (nbl, nwl)) =>
+
+          val b = zbl.zip(nbl).map {
+            case (nb, dnb) => nb + dnb
+          }
+
+          val w = zwl.zip(nwl).map {
+            case (nw, dnw) => nw + dnw
+          }
+          (b, w)
+
+      }
+     */
+
+    lazy val inb: List[Matrix] = biases.map(b => zeros(b.shape(): _*))
+    lazy val inw: List[Matrix] = weights.map(w => zeros(w.shape(): _*))
+
+    val source = StreamSource(miniBatch)
+
+    val flow: Flow[(Matrix, Matrix), (List[Matrix], List[Matrix]), NotUsed] =
+      Flow[(Matrix, Matrix)]
+        .mapAsyncUnordered(4) {
+          case (x, y) => Future(backProp(x, y))
+        }
+
+    val sum =
+      Sink.fold[(List[Matrix], List[Matrix]), (List[Matrix], List[Matrix])](
+        inb,
+        inw) {
+        case ((zbl, zwl), (nbl, nwl)) =>
+          val b = zbl.zip(nbl).map {
+            case (nb, dnb) => nb + dnb
+          }
+
+          val w = zwl.zip(nwl).map {
+            case (nw, dnw) => nw + dnw
+          }
+          (b, w)
+      }
+
+    val zzz: Future[(List[Matrix], List[Matrix])] =
+      source.via(flow).runWith(sum)
+
+    val (nablaBiases, nablaWeights) = Await.result(zzz, 5 seconds)
 
     biases.zip(nablaBiases).foreach {
       case (b, nb) =>
@@ -307,7 +391,7 @@ object Network {
   }
 
   def main(args: Array[String]) {
-    val topology = List(784, 30, 10)
+    val topology = List(784, 30, 30, 10)
     val epochs = 30
     val batchSize = 10
     val learningRate = 0.5

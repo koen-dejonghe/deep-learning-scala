@@ -1,4 +1,4 @@
-package botkop.nn.akka
+package botkop.nn.actors
 
 import org.nd4j.linalg.api.ndarray.{INDArray => Matrix}
 import akka.actor.{Actor, ActorRef, Props}
