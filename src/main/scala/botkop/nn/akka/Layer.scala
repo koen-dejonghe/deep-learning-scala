@@ -1,4 +1,4 @@
-package botkop.nn
+package botkop.nn.akka
 
 import akka.actor.{Actor, ActorRef, Props}
 import org.nd4j.linalg.api.ndarray.{INDArray => Matrix}
@@ -28,28 +28,25 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
 
     case FeedForward(x, y) =>
       incomingActivations.assign(x)
-      val z = (weights dot x) + biases
-      val a = sigmoid(z)
-      activations.assign(a)
+      activations.assign(sigmoid((weights dot x) + biases))
       fwd match {
         case Some(actor) =>
-          actor ! FeedForward(a, y)
+          actor forward FeedForward(activations, y)
         case None =>
           // output layer
-          val delta = a - y // cross entropy cost
+          val delta = activations - y // cross entropy cost
           val nb = delta
           val nw = delta dot incomingActivations.transpose()
-          bwd.get ! DeltaBackward(weights.transpose() dot nb)
+          nablaBiases += nb
+          nablaWeights += nw
 
-          // on line
-          biases -= nb * hp.learningRate
-          weights -= nw * hp.learningRate
+          bwd.get forward DeltaBackward(weights.transpose() dot nb)
       }
 
     case DeltaBackward(d) =>
-      println(s"bwd $counter ")
+      counter += 1
+//      println(s"bwd $counter ")
       val sp = derivative(activations)
-//      val delta = (weights.transpose() dot inb) * sp
 
       /*
       bwd match {
@@ -65,28 +62,28 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
       val nb = delta
       val nw = delta dot incomingActivations.transpose()
 
-      biases -= nb * hp.learningRate
-      weights -= nw * hp.learningRate
-
-      counter += 1
-
-      /*
       nablaBiases += nb
       nablaWeights += nw
 
-      if (counter % hp.miniBatchSize == 0) {
-        updateWeightsAndBiases()
+      if (counter >= hp.miniBatchSize) {
+        counter = 0
+        self ! UpdateWeightsAndBiases
+        sender ! MiniBatchReady
       }
-      */
+
+    case UpdateWeightsAndBiases =>
+      fwd match {
+        case Some(fwdLayer) =>
+          fwdLayer ! UpdateWeightsAndBiases
+        case None =>
+      }
+      updateWeightsAndBiases()
 
     case Guess(x) =>
-//      val _x = randn(x.shape())
-
       val z = (weights dot x) + biases
       val a = sigmoid(z)
-//      val a = z
 
-      println("a = " + a)
+//      println("a = " + a)
 
       fwd match {
         case Some(fwdLayer) =>
@@ -98,9 +95,9 @@ class Layer(shape: Shape, hp: HyperParameters) extends Actor {
   }
 
   def updateWeightsAndBiases(): Unit = {
-    biases -= (nablaBiases * hp.lm)
+    biases -= nablaBiases * hp.lm
     weights *= hp.lln
-    weights -= (nablaWeights * hp.lm)
+    weights -= nablaWeights * hp.lm
 
     nablaWeights.assign(zeros(shape.m, shape.n))
     nablaBiases.assign(zeros(shape.m, 1))

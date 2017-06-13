@@ -1,28 +1,27 @@
-package botkop.nn
+package botkop.nn.akka
 
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.ActorSystem
+import akka.pattern.ask
 import akka.util.Timeout
 import botkop.nn.Network.mnistData
 import org.nd4j.linalg.api.ndarray.{INDArray => Matrix}
 import org.nd4j.linalg.factory.Nd4j._
-import org.nd4j.linalg.ops.transforms.Transforms._
-import org.nd4s.Implicits._
-
-import scala.concurrent.duration._
-import akka.pattern.ask
 
 import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.io.StdIn
 import scala.language.postfixOps
 import scala.util.Random
 
-object ActorNetwork extends App {
+object NetworkApp extends App {
 
   val system: ActorSystem = ActorSystem()
 
+  implicit val timeout = Timeout(10 seconds)
+
   val hyperParameters = HyperParameters(
     miniBatchSize = 10,
-    learningRate = 0.5,
+    learningRate = 0.3,
     lambda = 0.5,
     trainingDataSize = 50000
   )
@@ -36,21 +35,20 @@ object ActorNetwork extends App {
   hiddenLayer ! Wiring(Some(outputLayer), None)
   outputLayer ! Wiring(None, Some(hiddenLayer))
 
+  val miniBatchActor = system.actorOf(MiniBatchActor.props(hiddenLayer))
+
   val (trainingData, validationData, testData) = mnistData()
 
+//  sgd(trainingData.take(5000), 30, hyperParameters.miniBatchSize, testData.take(1000))
   sgd(trainingData, 30, hyperParameters.miniBatchSize, testData)
 
   def updateMiniBatch(miniBatch: List[(Matrix, Matrix)]): Unit = {
-    miniBatch.foreach { case (x, y) =>
-        hiddenLayer ! FeedForward(x, y)
-    }
-
+    val f = miniBatchActor ? MiniBatch(miniBatch)
+    Await.result(f, timeout.duration)
   }
-
 
   def accuracy(data: List[(Matrix, Matrix)]): Int = data.foldLeft(0) {
     case (r, (x, y)) =>
-      implicit val timeout = Timeout(1 seconds)
       val f = hiddenLayer ? Guess(x)
       val a = Await.result(f, timeout.duration).asInstanceOf[Matrix]
 
@@ -73,13 +71,8 @@ object ActorNetwork extends App {
       val t1 = System.currentTimeMillis()
       println(s"Epoch $epoch completed in ${t1 - t0} ms.")
 
-      StdIn.readLine()
-
-//      Thread.sleep(25000)
       val a = accuracy(evaluationData)
       println(s"Accuracy on evaluation data: $a / ${evaluationData.size}")
-
-      StdIn.readLine()
     }
   }
 

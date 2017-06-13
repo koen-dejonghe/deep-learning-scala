@@ -10,6 +10,8 @@ classpathTypes += "maven-plugin"
 
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.2"
+libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.5.2"
+
 
 
 libraryDependencies += "org.nd4j" %% "nd4s" % "0.8.0"

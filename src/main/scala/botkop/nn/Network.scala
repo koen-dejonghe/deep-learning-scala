@@ -9,9 +9,13 @@ import org.nd4j.linalg.ops.transforms.Transforms._
 import org.nd4s.Implicits._
 
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
 import scala.io.Source
 import scala.language.postfixOps
 import scala.util.Random
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 trait Cost {
   def function(a: Matrix, y: Matrix): Double
@@ -82,14 +86,11 @@ class Network(topology: List[Int], cost: Cost) {
     val biases: List[Matrix] =
       topology.tail.map(size => randn(size, 1))
 
-    println("biases ==> " + biases.size)
-
     val weights: List[Matrix] = topology
       .sliding(2)
       .map(t => (t.head, t(1)))
       .map { case (x, y) => randn(y, x) / Math.sqrt(x) }
       .toList
-    println("weights ==> " + weights.size)
 
     (biases, weights)
   }
@@ -135,9 +136,8 @@ class Network(topology: List[Int], cost: Cost) {
   }
 
   def updateMiniBatch(miniBatch: List[(Matrix, Matrix)],
-                      learningRate: Double,
-                      lambda: Double,
-                      n: Int): Unit = {
+                      lm: Double,
+                      lln: Double): Unit = {
 
     val nablaBiases = biases.map(b => zeros(b.shape(): _*))
     val nablaWeights = weights.map(w => zeros(w.shape(): _*))
@@ -156,10 +156,6 @@ class Network(topology: List[Int], cost: Cost) {
             nw += dnw
         }
     }
-
-    val m = miniBatch.size
-    val lm = learningRate / m
-    val lln = 1.0 - learningRate * (lambda / n)
 
     biases.zip(nablaBiases).foreach {
       case (b, nb) =>
@@ -227,38 +223,41 @@ class Network(topology: List[Int], cost: Cost) {
 
     val monitor = Monitor()
 
+    val lm = learningRate / miniBatchSize
+    val lln = 1.0 - learningRate * (lambda / trainingData.size)
+
     (1 to epochs).foreach { epoch =>
-        val t0 = System.currentTimeMillis()
-        val shuffled = Random.shuffle(trainingData)
-        shuffled.sliding(miniBatchSize, miniBatchSize).foreach { miniBatch =>
-          updateMiniBatch(miniBatch, learningRate, lambda, trainingData.size)
-        }
-        val t1 = System.currentTimeMillis()
-        println(s"Epoch $epoch completed in ${t1 - t0} ms.")
+      val t0 = System.currentTimeMillis()
+      val shuffled = Random.shuffle(trainingData)
+      shuffled.sliding(miniBatchSize, miniBatchSize).foreach { miniBatch =>
+        updateMiniBatch(miniBatch, lm, lln)
+      }
+      val t1 = System.currentTimeMillis()
+      println(s"Epoch $epoch completed in ${t1 - t0} ms.")
 
-        if (monitorTrainingCost) {
-          val c = totalCost(trainingData, lambda)
-          println(s"Cost on training data: $c")
-          monitor.trainingCost += c
-        }
+      if (monitorTrainingCost) {
+        val c = totalCost(trainingData, lambda)
+        println(s"Cost on training data: $c")
+        monitor.trainingCost += c
+      }
 
-        if (monitorTrainingAccuracy) {
-          val a = accuracy(trainingData)
-          println(s"Accuracy on training data: $a / ${trainingData.size}")
-          monitor.trainingAccuracy += a
-        }
+      if (monitorTrainingAccuracy) {
+        val a = accuracy(trainingData)
+        println(s"Accuracy on training data: $a / ${trainingData.size}")
+        monitor.trainingAccuracy += a
+      }
 
-        if (monitorEvaluationCost) {
-          val c = totalCost(evaluationData, lambda)
-          println(s"Cost on evaluation data: $c")
-          monitor.evaluationCost += c
-        }
+      if (monitorEvaluationCost) {
+        val c = totalCost(evaluationData, lambda)
+        println(s"Cost on evaluation data: $c")
+        monitor.evaluationCost += c
+      }
 
-        if (monitorEvaluationAccuracy) {
-          val a = accuracy(evaluationData)
-          println(s"Accuracy on evaluation data: $a / ${evaluationData.size}")
-          monitor.evaluationAccuracy += a
-        }
+      if (monitorEvaluationAccuracy) {
+        val a = accuracy(evaluationData)
+        println(s"Accuracy on evaluation data: $a / ${evaluationData.size}")
+        monitor.evaluationAccuracy += a
+      }
     }
     monitor
   }
@@ -305,7 +304,7 @@ object Network {
   }
 
   def main(args: Array[String]) {
-    val topology = List(784, 100, 10)
+    val topology = List(784, 30, 10)
     val epochs = 30
     val batchSize = 10
     val learningRate = 0.5
