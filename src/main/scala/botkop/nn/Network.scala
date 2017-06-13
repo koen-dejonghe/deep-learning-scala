@@ -11,11 +11,12 @@ import org.nd4s.Implicits._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
-import scala.io.Source
 import scala.language.postfixOps
 import scala.util.Random
-
 import scala.concurrent.ExecutionContext.Implicits.global
+
+import akka.stream._
+import akka.stream.scaladsl._
 
 trait Cost {
   def function(a: Matrix, y: Matrix): Double
@@ -156,6 +157,8 @@ class Network(topology: List[Int], cost: Cost) {
             nw += dnw
         }
     }
+
+    val source = Source(miniBatch)
 
     biases.zip(nablaBiases).foreach {
       case (b, nb) =>
