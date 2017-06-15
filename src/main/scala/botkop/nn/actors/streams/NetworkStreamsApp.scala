@@ -1,16 +1,11 @@
 package botkop.nn.actors.streams
 
-import botkop.nn.Network.mnistData
+import akka.NotUsed
+import akka.actor.ActorSystem
 import akka.stream._
 import akka.stream.scaladsl._
-import akka.{Done, NotUsed}
-import akka.actor.ActorSystem
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
-import akka.util.ByteString
-import akka.stream.stage._
-
-import scala.concurrent._
-import scala.concurrent.duration._
+import botkop.nn._
 import org.nd4j.linalg.api.ndarray.{INDArray => Matrix}
 import org.nd4j.linalg.factory.Nd4j._
 import org.nd4j.linalg.ops.transforms.Transforms._

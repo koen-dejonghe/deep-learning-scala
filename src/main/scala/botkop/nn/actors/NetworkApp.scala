@@ -3,13 +3,13 @@ package botkop.nn.actors
 import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.util.Timeout
-import botkop.nn.Network.mnistData
 import org.nd4j.linalg.api.ndarray.{INDArray => Matrix}
 import org.nd4j.linalg.factory.Nd4j._
 
+import botkop.nn._
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.io.StdIn
 import scala.language.postfixOps
 import scala.util.Random
 

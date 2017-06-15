@@ -1,74 +1,14 @@
 package botkop.nn
 
-import java.io.{BufferedInputStream, FileInputStream}
-import java.util.zip.GZIPInputStream
-
-import akka.{Done, NotUsed}
-import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, scaladsl}
 import org.nd4j.linalg.api.ndarray.{INDArray => Matrix}
 import org.nd4j.linalg.factory.Nd4j._
 import org.nd4j.linalg.ops.transforms.Transforms._
 import org.nd4s.Implicits._
 
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Random
-import scala.concurrent.ExecutionContext.Implicits.global
-import akka.stream.scaladsl.{Flow, Sink, Source => StreamSource}
 
-import scala.io.Source
-
-trait Cost {
-  def function(a: Matrix, y: Matrix): Double
-  def delta(a: Matrix, y: Matrix): Matrix
-  def name: String
-}
-
-object QuadraticCost extends Cost {
-
-  import Network._
-
-  /**
-    * Return the cost associated with an output a and the desired output y
-    */
-  override def function(a: Matrix, y: Matrix): Double = {
-    val d: Double = euclideanDistance(a, y)
-    0.5 * d * d
-  }
-
-  /**
-    * Return the error delta from the output layer
-    */
-  override def delta(a: Matrix, y: Matrix): Matrix = {
-    (a - y) * derivative(a)
-  }
-
-  def name = "QuadraticCost"
-
-}
-
-object CrossEntropyCost extends Cost {
-
-  /**
-    * Return the cost associated with an output a and the desired output y
-    */
-  override def function(a: Matrix, y: Matrix): Double =
-    ((-y * log(a)) - ((-y + 1.0) * log(-a + 1.0))).sum().getDouble(0)
-
-  /**
-    * Return the error delta from the output layer
-    */
-  override def delta(a: Matrix, y: Matrix): Matrix = a - y
-
-  def name = "CrossEntropyCost"
-}
-
-class Network(topology: List[Int], cost: Cost) {
-
-  import Network._
+class NeuralNet(topology: List[Int], cost: Cost) {
 
   val (biases, weights) = initialize(topology)
 
@@ -122,7 +62,6 @@ class Network(topology: List[Int], cost: Cost) {
     val inb = delta
     val inw = delta dot activations(activations.size - 2).transpose()
 
-    /*
     val (nablaBiases, nablaWeights) = (topology.size - 2 until 0 by -1)
       .foldLeft((List(inb), List(inw))) {
         case ((nbl, nwl), l) =>
@@ -137,39 +76,14 @@ class Network(topology: List[Int], cost: Cost) {
           (nb :: nbl, nw :: nwl)
 
       }
-    */
-
-    val source = StreamSource(topology.size - 2 until 0 by -1)
-
-    val sink = Sink
-      .fold[(List[Matrix], List[Matrix]), Int]((List(inb), List(inw))) {
-        case ((nbl, nwl), l) =>
-          val sp = derivative(activations(l))
-
-          // last added nb to nbl is the previous delta
-          val delta = (weights(l).transpose() dot nbl.head) * sp
-
-          val nb = delta
-          val nw = delta dot activations(l - 1).transpose()
-
-          (nb :: nbl, nw :: nwl)
-      }.async
-
-    val zzz = source.runWith(sink)
-
-    val (nablaBiases, nablaWeights) = Await.result(zzz, 5 seconds)
 
     (nablaBiases, nablaWeights)
   }
-
-  implicit val system = ActorSystem("QuickStart")
-  implicit val materializer = ActorMaterializer()
 
   def updateMiniBatch(miniBatch: List[(Matrix, Matrix)],
                       lm: Double,
                       lln: Double): Unit = {
 
-    /*
     val nablaBiases: List[Matrix] = biases.map(b => zeros(b.shape(): _*))
     val nablaWeights: List[Matrix] = weights.map(w => zeros(w.shape(): _*))
 
@@ -188,61 +102,6 @@ class Network(topology: List[Int], cost: Cost) {
             nw += dnw
         }
     }
-    */
-
-    /*
-    lazy val inb: List[Matrix] = biases.map(b => zeros(b.shape(): _*))
-    lazy val inw: List[Matrix] = weights.map(w => zeros(w.shape(): _*))
-
-    val (nablaBiases, nablaWeights) = miniBatch
-      .map {
-        case (x, y) => backProp(x, y)
-      }
-      .foldLeft((inb, inw)) {
-        case ((zbl, zwl), (nbl, nwl)) =>
-
-          val b = zbl.zip(nbl).map {
-            case (nb, dnb) => nb + dnb
-          }
-
-          val w = zwl.zip(nwl).map {
-            case (nw, dnw) => nw + dnw
-          }
-          (b, w)
-
-      }
-     */
-
-    lazy val inb: List[Matrix] = biases.map(b => zeros(b.shape(): _*))
-    lazy val inw: List[Matrix] = weights.map(w => zeros(w.shape(): _*))
-
-    val source = StreamSource(miniBatch)
-
-    val flow: Flow[(Matrix, Matrix), (List[Matrix], List[Matrix]), NotUsed] =
-      Flow[(Matrix, Matrix)]
-        .mapAsyncUnordered(4) {
-          case (x, y) => Future(backProp(x, y))
-        }
-
-    val sum =
-      Sink.fold[(List[Matrix], List[Matrix]), (List[Matrix], List[Matrix])](
-        inb,
-        inw) {
-        case ((zbl, zwl), (nbl, nwl)) =>
-          val b = zbl.zip(nbl).map {
-            case (nb, dnb) => nb + dnb
-          }
-
-          val w = zwl.zip(nwl).map {
-            case (nw, dnw) => nw + dnw
-          }
-          (b, w)
-      }
-
-    val zzz: Future[(List[Matrix], List[Matrix])] =
-      source.via(flow).runWith(sum)
-
-    val (nablaBiases, nablaWeights) = Await.result(zzz, 5 seconds)
 
     biases.zip(nablaBiases).foreach {
       case (b, nb) =>
@@ -350,45 +209,7 @@ class Network(topology: List[Int], cost: Cost) {
   }
 }
 
-case class Monitor(evaluationCost: ListBuffer[Double] = ListBuffer.empty,
-                   evaluationAccuracy: ListBuffer[Double] = ListBuffer.empty,
-                   trainingCost: ListBuffer[Double] = ListBuffer.empty,
-                   trainingAccuracy: ListBuffer[Double] = ListBuffer.empty)
-
-object Network {
-
-  def derivative(z: Matrix): Matrix = z * (-z + 1.0)
-
-  def vectorize(x: Int, base: Int = 10): Matrix =
-    zeros(1, base) putScalar (x, 1.0)
-
-  def gzis(fname: String): GZIPInputStream =
-    new GZIPInputStream(new BufferedInputStream(new FileInputStream(fname)))
-
-  def loadData(fname: String): List[(Matrix, Int)] = {
-    Source.fromInputStream(gzis(fname)).getLines() map { line =>
-      val tokens = line.split(",")
-      val (y, x) = (tokens.head.toInt, tokens.tail.map(_.toDouble / 255.0))
-      (create(x).transpose(), y)
-    } toList
-  }
-
-  def mnistData(): (List[(Matrix, Matrix)],
-                    List[(Matrix, Matrix)],
-                    List[(Matrix, Matrix)]) = {
-
-    val tvData = loadData("data/mnist_train.csv.gz").map {
-      case (x, y) => (x, vectorize(y))
-    }
-
-    val (trainingData, validationData) = tvData.splitAt(50000)
-
-    val testData = loadData("data/mnist_test.csv.gz").map {
-      case (x, y) => (x, vectorize(y))
-    }
-
-    (trainingData, validationData, testData)
-  }
+object NeuralNet {
 
   def main(args: Array[String]) {
     val topology = List(784, 30, 30, 10)
@@ -398,7 +219,7 @@ object Network {
     val lambda = 0.5
     val cost = CrossEntropyCost
 
-    val nn = new Network(topology, cost)
+    val nn = new NeuralNet(topology, cost)
 
     val (trainingData, validationData, testData) = mnistData()
 
@@ -409,10 +230,7 @@ object Network {
       learningRate,
       lambda,
       validationData,
-      monitorEvaluationCost = false,
-      monitorEvaluationAccuracy = true,
-      monitorTrainingCost = false,
-      monitorTrainingAccuracy = false
+      monitorEvaluationAccuracy = true
     )
 
     println(monitor)
