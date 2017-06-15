@@ -10,34 +10,7 @@ import scala.util.Random
 
 class NeuralNet(topology: List[Int], cost: Cost) {
 
-  val (biases, weights) = initialize(topology)
-
-  /**
-    * Initialize each weight using a Gaussian distribution with mean 0
-    * and standard deviation 1 over the square root of the number of
-    * weights connecting to the same neuron.  Initialize the biases
-    * using a Gaussian distribution with mean 0 and standard
-    * deviation 1.
-    * Note that the first layer is assumed to be an input layer, and
-    * by convention we won't set any biases for those neurons, since
-    * biases are only ever used in computing the outputs from later
-    * layers.
-    * @param topology layer definition of the network
-    * @return tuple of (biases, weights)
-    */
-  def initialize(topology: List[Int]): (List[Matrix], List[Matrix]) = {
-
-    val biases: List[Matrix] =
-      topology.tail.map(size => randn(size, 1))
-
-    val weights: List[Matrix] = topology
-      .sliding(2)
-      .map(t => (t.head, t(1)))
-      .map { case (x, y) => randn(y, x) / Math.sqrt(x) }
-      .toList
-
-    (biases, weights)
-  }
+  val (biases, weights) = initializeBiasesAndWeights(topology)
 
   /**
     * Return the output of the network if x is input
