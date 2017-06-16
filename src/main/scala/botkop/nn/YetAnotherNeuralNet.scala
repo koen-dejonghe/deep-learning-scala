@@ -27,7 +27,7 @@ case class Network(layers: List[Layer]) {
 
   def feedForward(x: Matrix): List[Matrix] = layers.foldLeft(List(x)) {
     case (activations, layer) =>
-      activations :+ layer.activate(x)
+      activations :+ layer.activate(activations.last)
   }
 
   def backProp(x: Matrix, y: Matrix): Network = {
@@ -38,7 +38,7 @@ case class Network(layers: List[Layer]) {
     val inb = delta
     val inw = delta dot activations(activations.size - 2).transpose()
 
-    val deltaLayers = (size - 2 until 0 by -1)
+    val deltaLayers = (size - 1 until 0 by -1)
       .foldLeft(List(Layer(inb, inw))) {
         case (nablaLayerAcc, layerIndex) =>
           val sp = derivative(activations(layerIndex))
