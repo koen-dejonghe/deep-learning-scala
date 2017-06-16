@@ -183,6 +183,9 @@ class BreezeNetwork(topology: List[Int]) {
         monitor.evaluationAccuracy += a
       }
     }
+
+    system.terminate()
+
     monitor
   }
 }
@@ -192,7 +195,7 @@ object BreezeNetwork {
   def main(args: Array[String]) {
     val topology = List(784, 30, 10)
     val epochs = 30
-    val batchSize = 200
+    val batchSize = 100
     val learningRate = 0.2
     val lambda = 0.5
 
