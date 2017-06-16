@@ -1,14 +1,25 @@
 package botkop.nn.brz
 
+import akka.NotUsed
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Flow, Sink, Source}
 import botkop.nn.Monitor
 import breeze.linalg.{DenseMatrix, argmax}
 import breeze.numerics.sigmoid
 
 import scala.annotation.tailrec
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Random
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 class BreezeNetwork(topology: List[Int]) {
+
+  implicit val system = ActorSystem("akka-streaming-neural-net")
+  implicit val materializer = ActorMaterializer()
 
   var (biases, weights) = initializeBiasesAndWeights(topology)
 
@@ -52,6 +63,38 @@ class BreezeNetwork(topology: List[Int]) {
     (nablaBiases, nablaWeights)
   }
 
+  private val backPropFlow =
+    Flow[(DoubleMatrix, DoubleMatrix)]
+      .mapAsyncUnordered(4) {
+        case (x, y) => Future(backProp(x, y))
+      }
+
+  private val deltaCollectorSink = {
+    val inb: List[DoubleMatrix] =
+      biases.map(b => DenseMatrix.zeros[Double](b.rows, b.cols))
+    val inw: List[DoubleMatrix] =
+      weights.map(w => DenseMatrix.zeros[Double](w.rows, w.cols))
+
+    Sink.fold[(List[DoubleMatrix], List[DoubleMatrix]),
+      (List[DoubleMatrix], List[DoubleMatrix])](inb, inw) {
+      case ((zbl, zwl), (nbl, nwl)) =>
+        val b = zbl.zip(nbl).map {
+          case (nb, dnb) => nb + dnb
+        }
+
+        val w = zwl.zip(nwl).map {
+          case (nw, dnw) => nw + dnw
+        }
+        (b, w)
+    }
+  }
+
+  def collectDeltasPar(miniBatch: List[(DoubleMatrix, DoubleMatrix)])
+    : (List[DoubleMatrix], List[DoubleMatrix]) = {
+    val zzz = Source(miniBatch).via(backPropFlow).runWith(deltaCollectorSink)
+    Await.result(zzz, 5 seconds)
+  }
+
   def collectDeltas(miniBatch: List[(DoubleMatrix, DoubleMatrix)])
     : (List[DoubleMatrix], List[DoubleMatrix]) = {
 
@@ -82,7 +125,7 @@ class BreezeNetwork(topology: List[Int]) {
                       lm: Double,
                       lln: Double): Unit = {
 
-    val (deltaBiases, deltaWeights) = collectDeltas(miniBatch)
+    val (deltaBiases, deltaWeights) = collectDeltasPar(miniBatch)
 
     biases.zip(deltaBiases).foreach {
       case (b, nb) =>
@@ -147,9 +190,9 @@ class BreezeNetwork(topology: List[Int]) {
 object BreezeNetwork {
 
   def main(args: Array[String]) {
-    val topology = List(784, 100, 100, 10)
+    val topology = List(784, 30, 10)
     val epochs = 30
-    val batchSize = 100
+    val batchSize = 200
     val learningRate = 0.2
     val lambda = 0.5
 
