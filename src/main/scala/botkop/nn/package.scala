@@ -31,15 +31,19 @@ package object nn {
     List[(Matrix, Matrix)],
     List[(Matrix, Matrix)]) = {
 
+    println("reading training data")
     val tvData = loadData("data/mnist_train.csv.gz").map {
       case (x, y) => (x, vectorize(y))
     }
+    println("done reading training data")
 
     val (trainingData, validationData) = tvData.splitAt(50000)
 
+    println("reading test data")
     val testData = loadData("data/mnist_test.csv.gz").map {
       case (x, y) => (x, vectorize(y))
     }
+    println("done reading test data")
 
     (trainingData, validationData, testData)
   }

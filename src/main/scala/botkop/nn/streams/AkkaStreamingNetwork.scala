@@ -10,6 +10,7 @@ import org.nd4j.linalg.factory.Nd4j._
 import org.nd4j.linalg.ops.transforms.Transforms._
 import org.nd4s.Implicits._
 
+import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
@@ -17,23 +18,33 @@ import scala.util.Random
 
 class AkkaStreamingNetwork(topology: List[Int], cost: Cost) {
 
-  implicit val system = ActorSystem("akka streaming neural net")
+  implicit val system = ActorSystem("akka-streaming-neural-net")
   implicit val materializer = ActorMaterializer()
 
-  val (biases, weights) = initializeBiasesAndWeights(topology)
+  // val (biases, weights) = initializeBiasesAndWeights(topology)
 
-  def feedForward(x: Matrix): List[Matrix] = {
-    biases.zip(weights).foldLeft(List(x)) {
-      case (as, (b, w)) =>
-        val z = (w dot as.last) + b
+  def feedForward(x: Matrix,
+                  biases: List[Matrix],
+                  weights: List[Matrix]): List[Matrix] = {
+    @tailrec
+    def r(bws: List[(Matrix, Matrix)] = biases.zip(weights),
+          acc: List[Matrix] = List(x)): List[Matrix] = bws match {
+      case (b, w) :: rbws =>
+        val z = (w dot acc.head) + b
         val a = sigmoid(z)
-        as :+ a
+        r(rbws, a :: acc)
+      case Nil =>
+        acc
     }
+    r().reverse
   }
 
-  def backProp(x: Matrix, y: Matrix): Future[(List[Matrix], List[Matrix])] = {
+  def backProp(x: Matrix,
+               y: Matrix,
+               biases: List[Matrix],
+               weights: List[Matrix]): Future[(List[Matrix], List[Matrix])] = {
 
-    val activations = feedForward(x)
+    val activations = feedForward(x, biases, weights)
 
     val delta = cost.delta(activations.last, y)
 
@@ -59,7 +70,8 @@ class AkkaStreamingNetwork(topology: List[Int], cost: Cost) {
     source.runWith(sink)
   }
 
-  def updateMiniBatch(miniBatch: List[(Matrix, Matrix)],
+  /*
+  def _updateMiniBatch(miniBatch: List[(Matrix, Matrix)],
                       lm: Double,
                       lln: Double): Unit = {
 
@@ -105,48 +117,64 @@ class AkkaStreamingNetwork(topology: List[Int], cost: Cost) {
     weights.zip(updw).foreach(v => v._1.assign(v._2))
 
   }
+   */
 
-  def accuracy(data: List[(Matrix, Matrix)]): Int = data.foldLeft(0) {
+  def updateMiniBatch(miniBatch: List[(Matrix, Matrix)],
+                      biases: List[Matrix],
+                      weights: List[Matrix],
+                      lm: Double,
+                      lln: Double): (List[Matrix], List[Matrix]) = {
+
+    lazy val inb: List[Matrix] = biases.map(b => zeros(b.shape(): _*))
+    lazy val inw: List[Matrix] = weights.map(w => zeros(w.shape(): _*))
+
+    val source = Source(miniBatch)
+
+    val bp: Flow[(Matrix, Matrix), (List[Matrix], List[Matrix]), NotUsed] =
+      Flow[(Matrix, Matrix)]
+        .mapAsyncUnordered(2) {
+          case (x, y) => backProp(x, y, biases, weights)
+        }
+
+    val add =
+      Flow[(List[Matrix], List[Matrix])].fold(inb, inw) {
+        case ((zbl, zwl), (nbl, nwl)) =>
+          val b = zbl.zip(nbl).map {
+            case (nb, dnb) => nb + dnb
+          }
+
+          val w = zwl.zip(nwl).map {
+            case (nw, dnw) => nw + dnw
+          }
+          (b, w)
+      }
+
+    val bw =
+      Sink.fold[(List[Matrix], List[Matrix]), (List[Matrix], List[Matrix])](
+        biases,
+        weights) {
+        case ((b, w), (nb, nw)) =>
+          val ub = b.zip(nb).map { case (p1, p2) => p1 - (p2 * lm) }
+          val uw = w.zip(nw).map { case (p1, p2) => (p1 * lln) - (p2 * lm) }
+          (ub, uw)
+      }
+
+    val zzz: Future[(List[Matrix], List[Matrix])] =
+      source.via(bp).via(add).runWith(bw)
+
+    Await.result(zzz, 5 seconds)
+  }
+
+  def accuracy(data: List[(Matrix, Matrix)],
+               biases: List[Matrix],
+               weights: List[Matrix]): Int = data.foldLeft(0) {
     case (r, (x, y)) =>
-      val a = feedForward(x).last
+      val a = feedForward(x, biases, weights).last
       val guess = argMax(a).getInt(0)
       val truth = argMax(y).getInt(0)
       if (guess == truth) r + 1 else r
   }
 
-  def totalCost(data: List[(Matrix, Matrix)], lambda: Double): Double = {
-
-    val ffCost: Double = data.foldLeft(0.0) {
-      case (c, (x, y)) =>
-        val a = feedForward(x).last
-        c + cost.function(a, y) / data.size
-    }
-
-    weights.foldLeft(ffCost) {
-      case (c, w) =>
-        c + .5 * (lambda / data.size) * w.norm2Number().doubleValue()
-    }
-  }
-
-  /**
-    *
-    * Train the neural network using mini-batch stochastic gradient
-    * descent.  The trainingData is a list of tuples (x, y)
-    * representing the training inputs and the desired outputs.
-    * The method also accepts
-    * evaluation_data, usually either the validation or test
-    * data.  We can monitor the cost and accuracy on either the
-    * evaluation data or the training data, by setting the
-    * appropriate flags.  The method returns a tuple containing four
-    * lists: the (per-epoch) costs on the evaluation data, the
-    * accuracies on the evaluation data, the costs on the training
-    * data, and the accuracies on the training data.  All values are
-    * evaluated at the end of each training epoch.  So, for example,
-    * if we train for 30 epochs, then the first element of the tuple
-    * will be a 30-element list containing the cost on the
-    * evaluation data at the end of each epoch. Note that the lists
-    * are empty if the corresponding flag is not set.
-    */
   def sgd(trainingData: List[(Matrix, Matrix)],
           epochs: Int,
           miniBatchSize: Int,
@@ -160,44 +188,50 @@ class AkkaStreamingNetwork(topology: List[Int], cost: Cost) {
 
     val monitor = Monitor()
 
+    val (biases: List[Matrix], weights: List[Matrix]) =
+      initializeBiasesAndWeights(topology)
     val lm = learningRate / miniBatchSize
     val lln = 1.0 - learningRate * (lambda / trainingData.size)
 
     (1 to epochs).foreach { epoch =>
+      println(s"Epoch $epoch started")
       val t0 = System.currentTimeMillis()
       val shuffled = Random.shuffle(trainingData)
-      shuffled.sliding(miniBatchSize, miniBatchSize).foreach { miniBatch =>
-        updateMiniBatch(miniBatch, lm, lln)
+      val batches = shuffled.sliding(miniBatchSize, miniBatchSize)
+
+      @tailrec
+      def r(bts: List[List[(Matrix, Matrix)]],
+            bas: List[Matrix],
+            wes: List[Matrix]): (List[Matrix], List[Matrix]) = {
+        bts match {
+          case batch :: rbts =>
+            val (b, w) = updateMiniBatch(batch, bas, wes, lm, lln)
+            r(rbts, b, w)
+          case Nil => (bas, wes)
+        }
       }
+
+      val (b, w) = r(batches.toList, biases, weights)
+
+      /*
+      shuffled.sliding(miniBatchSize, miniBatchSize).foreach { miniBatch =>
+        updateMiniBatch(miniBatch, biases, weights, lm, lln)
+      }
+       */
+
       val t1 = System.currentTimeMillis()
       println(s"Epoch $epoch completed in ${t1 - t0} ms.")
 
-      if (monitorTrainingCost) {
-        val c = totalCost(trainingData, lambda)
-        println(s"Cost on training data: $c")
-        monitor.trainingCost += c
-      }
-
-      if (monitorTrainingAccuracy) {
-        val a = accuracy(trainingData)
-        println(s"Accuracy on training data: $a / ${trainingData.size}")
-        monitor.trainingAccuracy += a
-      }
-
-      if (monitorEvaluationCost) {
-        val c = totalCost(evaluationData, lambda)
-        println(s"Cost on evaluation data: $c")
-        monitor.evaluationCost += c
-      }
-
       if (monitorEvaluationAccuracy) {
-        val a = accuracy(evaluationData)
+        val a = accuracy(evaluationData, b, w)
         println(s"Accuracy on evaluation data: $a / ${evaluationData.size}")
         monitor.evaluationAccuracy += a
       }
+
     }
     monitor
   }
+
 }
 
 object AkkaStreamingNetwork {

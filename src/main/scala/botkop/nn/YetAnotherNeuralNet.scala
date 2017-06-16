@@ -20,7 +20,7 @@ case class Layer(biases: Matrix, weights: Matrix) {
 
 case class Network(layers: List[Layer]) {
 
-  def size: Int = layers.size
+  def size: Int = layers.size + 1
 
   def weights: List[Matrix] = layers.map(_.weights)
   def biases: List[Matrix] = layers.map(_.biases)
@@ -38,7 +38,7 @@ case class Network(layers: List[Layer]) {
     val inb = delta
     val inw = delta dot activations(activations.size - 2).transpose()
 
-    val deltaLayers = (size - 1 until 0 by -1)
+    val deltaLayers = (size - 2 until 0 by -1)
       .foldLeft(List(Layer(inb, inw))) {
         case (nablaLayerAcc, layerIndex) =>
           val sp = derivative(activations(layerIndex))

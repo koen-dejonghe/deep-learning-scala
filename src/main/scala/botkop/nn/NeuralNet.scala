@@ -5,6 +5,7 @@ import org.nd4j.linalg.factory.Nd4j._
 import org.nd4j.linalg.ops.transforms.Transforms._
 import org.nd4s.Implicits._
 
+import scala.annotation.tailrec
 import scala.language.postfixOps
 import scala.util.Random
 
@@ -17,7 +18,7 @@ class NeuralNet(topology: List[Int], cost: Cost) {
     * @param x input to the network
     * @return all activated layers
     */
-  def feedForward(x: Matrix): List[Matrix] = {
+  def _feedForward(x: Matrix): List[Matrix] = {
     biases.zip(weights).foldLeft(List(x)) {
       case (as, (b, w)) =>
         val z = (w dot as.last) + b
@@ -26,9 +27,24 @@ class NeuralNet(topology: List[Int], cost: Cost) {
     }
   }
 
+  @tailrec
+  private def feedForward(
+      acc: List[Matrix],
+      bws: List[(Matrix, Matrix)] = biases.zip(weights)): List[Matrix] =
+    bws match {
+      case (b, w) :: rbws =>
+        val z = (w dot acc.head) + b
+        val a = sigmoid(z)
+        feedForward(a :: acc, rbws)
+      case Nil =>
+        acc.reverse
+    }
+
+  def feedForward(x: Matrix): List[Matrix] = feedForward(List(x))
+
   def backProp(x: Matrix, y: Matrix): (List[Matrix], List[Matrix]) = {
 
-    val activations = feedForward(x)
+    val activations = feedForward(List(x))
 
     val delta = cost.delta(activations.last, y)
 
