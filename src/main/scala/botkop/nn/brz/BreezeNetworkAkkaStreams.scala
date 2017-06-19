@@ -1,18 +1,24 @@
 package botkop.nn.brz
 
+import akka.NotUsed
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Flow, Sink, Source}
 import botkop.nn.Monitor
 import breeze.linalg.{DenseMatrix, argmax}
 import breeze.numerics.sigmoid
 
 import scala.annotation.tailrec
-import scala.concurrent.{Await, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 import scala.util.Random
 
-import scala.concurrent.ExecutionContext.Implicits.global
+class BreezeNetworkAkkaStreams(topology: List[Int]) {
 
-class BreezeNetwork(topology: List[Int]) {
+  implicit val system = ActorSystem("akka-streaming-neural-net")
+  implicit val materializer = ActorMaterializer()
 
   var (biases, weights) = initializeBiasesAndWeights(topology)
 
@@ -50,64 +56,49 @@ class BreezeNetwork(topology: List[Int]) {
         (nbl, nwl)
       }
 
-    r(topology.size - 2, List(deltaBias), List(deltaWeight))
+    val (nablaBiases, nablaWeights) =
+      r(topology.size - 2, List(deltaBias), List(deltaWeight))
+
+    (nablaBiases, nablaWeights)
   }
 
-  def collectDeltasPar(miniBatch: List[(DoubleMatrix, DoubleMatrix)])
-    : (List[DoubleMatrix], List[DoubleMatrix]) = {
+  private val backPropFlow =
+    Flow[(DoubleMatrix, DoubleMatrix)]
+      .mapAsyncUnordered(16) {
+        case (x, y) => Future(backProp(x, y))
+      }
 
-    val fs = Future.traverse(miniBatch) {
-      case (x, y) => Future(backProp(x, y))
-    }
-
-    val result: List[(List[DoubleMatrix], List[DoubleMatrix])] =
-      Await.result(fs, 5 seconds)
-
+  private val deltaCollectorSink = {
     val inb: List[DoubleMatrix] =
       biases.map(b => DenseMatrix.zeros[Double](b.rows, b.cols))
     val inw: List[DoubleMatrix] =
       weights.map(w => DenseMatrix.zeros[Double](w.rows, w.cols))
 
-    result.foreach {
-      case (b, w) =>
-        inb.zip(b).foreach { case (p1, p2) => p1 += p2 }
-        inw.zip(w).foreach { case (p1, p2) => p1 += p2 }
-    }
+    Sink.fold[(List[DoubleMatrix], List[DoubleMatrix]),
+              (List[DoubleMatrix], List[DoubleMatrix])](inb, inw) {
+      case ((zbl, zwl), (nbl, nwl)) =>
+        val b = zbl.zip(nbl).map {
+          case (nb, dnb) => nb + dnb
+        }
 
-    (inb, inw)
+        val w = zwl.zip(nwl).map {
+          case (nw, dnw) => nw + dnw
+        }
+        (b, w)
+    }
   }
 
-  // reference implementation!!!!!
-  def collectDeltas(miniBatch: List[(DoubleMatrix, DoubleMatrix)])
+  def collectDeltasPar(miniBatch: List[(DoubleMatrix, DoubleMatrix)])
     : (List[DoubleMatrix], List[DoubleMatrix]) = {
-
-    val deltaBiases: List[DoubleMatrix] =
-      biases.map(b => DenseMatrix.zeros[Double](b.rows, b.cols))
-    val deltaWeights: List[DoubleMatrix] =
-      weights.map(w => DenseMatrix.zeros[Double](w.rows, w.cols))
-
-    miniBatch.foreach {
-      case (x, y) =>
-        val (deltaNablaB, deltaNablaW) = backProp(x, y)
-
-        deltaBiases.zip(deltaNablaB).foreach {
-          case (nb, dnb) =>
-            nb += dnb
-        }
-
-        deltaWeights.zip(deltaNablaW).foreach {
-          case (nw, dnw) =>
-            nw += dnw
-        }
-    }
-    (deltaBiases, deltaWeights)
+    val zzz = Source(miniBatch).via(backPropFlow).runWith(deltaCollectorSink)
+    Await.result(zzz, 5 seconds)
   }
 
   def updateMiniBatch(miniBatch: List[(DoubleMatrix, DoubleMatrix)],
                       lm: Double,
                       lln: Double): Unit = {
 
-    val (deltaBiases, deltaWeights) = collectDeltas(miniBatch)
+    val (deltaBiases, deltaWeights) = collectDeltasPar(miniBatch)
 
     biases.zip(deltaBiases).foreach {
       case (b, nb) =>
@@ -166,11 +157,13 @@ class BreezeNetwork(topology: List[Int]) {
       }
     }
 
+    system.terminate()
+
     monitor
   }
 }
 
-object BreezeNetwork {
+object BreezeNetworkAkkaStreams {
 
   def main(args: Array[String]) {
     val topology = List(784, 100, 100, 10)
@@ -179,7 +172,7 @@ object BreezeNetwork {
     val learningRate = 1.5
     val lambda = 0.5
 
-    val nn = new BreezeNetwork(topology)
+    val nn = new BreezeNetworkAkkaStreams(topology)
 
     val (trainingData, validationData, testData) = mnistData()
 
@@ -197,3 +190,5 @@ object BreezeNetwork {
 
   }
 }
+
+
