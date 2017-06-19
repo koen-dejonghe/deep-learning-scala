@@ -53,30 +53,6 @@ class BreezeNetwork(topology: List[Int]) {
     r(topology.size - 2, List(deltaBias), List(deltaWeight))
   }
 
-  def collectDeltasPar(miniBatch: List[(DoubleMatrix, DoubleMatrix)])
-    : (List[DoubleMatrix], List[DoubleMatrix]) = {
-
-    val fs = Future.traverse(miniBatch) {
-      case (x, y) => Future(backProp(x, y))
-    }
-
-    val result: List[(List[DoubleMatrix], List[DoubleMatrix])] =
-      Await.result(fs, 5 seconds)
-
-    val inb: List[DoubleMatrix] =
-      biases.map(b => DenseMatrix.zeros[Double](b.rows, b.cols))
-    val inw: List[DoubleMatrix] =
-      weights.map(w => DenseMatrix.zeros[Double](w.rows, w.cols))
-
-    result.foreach {
-      case (b, w) =>
-        inb.zip(b).foreach { case (p1, p2) => p1 += p2 }
-        inw.zip(w).foreach { case (p1, p2) => p1 += p2 }
-    }
-
-    (inb, inw)
-  }
-
   // reference implementation!!!!!
   def collectDeltas(miniBatch: List[(DoubleMatrix, DoubleMatrix)])
     : (List[DoubleMatrix], List[DoubleMatrix]) = {
