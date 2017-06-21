@@ -44,7 +44,8 @@ class BreezeNetworkAsync(topology: List[Int],
     }
 
   def backProp(x: DoubleMatrix, y: DoubleMatrix)(implicit bw: BiasesAndWeights)
-    : Future[(List[DoubleMatrix], List[DoubleMatrix])] =
+    : Future[(List[DoubleMatrix], List[DoubleMatrix])] = {
+
     for {
       activations <- Future(feedForward(List(x), bw.zipped))
     } yield {
@@ -68,13 +69,14 @@ class BreezeNetworkAsync(topology: List[Int],
 
       r(topology.size - 2, List(deltaBias), List(deltaWeight))
     }
+  }
 
   def updateMiniBatch(
-      miniBatch: List[(DoubleMatrix, DoubleMatrix)],
-      remainingBatches: List[List[(DoubleMatrix, DoubleMatrix)]])(
-      implicit epoch: Int,
-      startTime: Long,
-      bw: BiasesAndWeights): Unit = {
+                       miniBatch: List[(DoubleMatrix, DoubleMatrix)],
+                       remainingBatches: List[List[(DoubleMatrix, DoubleMatrix)]])(
+                       implicit epoch: Int,
+                       startTime: Long,
+                       bw: BiasesAndWeights): Unit = {
 
     import bw._
 
@@ -112,13 +114,12 @@ class BreezeNetworkAsync(topology: List[Int],
       // call processEpoch with the remainder of the batches
       processEpoch(remainingBatches)
     }
-
   }
 
   private def processEpoch(batches: List[List[(DoubleMatrix, DoubleMatrix)]])(
-      implicit epoch: Int,
-      startTime: Long,
-      bw: BiasesAndWeights): Unit = batches match {
+    implicit epoch: Int,
+    startTime: Long,
+    bw: BiasesAndWeights): Unit = batches match {
 
     case miniBatch :: rbs =>
       updateMiniBatch(miniBatch, rbs)
@@ -127,7 +128,7 @@ class BreezeNetworkAsync(topology: List[Int],
       if (epoch > 0) {
         println(
           s"Epoch $epoch completed in ${System.currentTimeMillis() - startTime} ms.")
-        accuracy(evaluationData)
+        accuracy()
       }
 
       val shuffled = Random.shuffle(trainingData)
@@ -135,10 +136,10 @@ class BreezeNetworkAsync(topology: List[Int],
       processEpoch(nextBatches)(epoch + 1, System.currentTimeMillis(), bw)
   }
 
-  def accuracy(data: List[(DoubleMatrix, DoubleMatrix)], sum: Int = 0)(
+  def accuracy(sum: Int = 0)(
       implicit bw: BiasesAndWeights): Unit =
     for {
-      correct <- Future.traverse(data) {
+      correct <- Future.traverse(evaluationData) {
         case (x, y) =>
           Future {
             val a = feedForward(List(x), bw.zipped).last
@@ -149,7 +150,7 @@ class BreezeNetworkAsync(topology: List[Int],
       }
     } yield {
       val c = correct.sum
-      println(s"Accuracy on evaluation data: $c / ${data.size}")
+      println(s"Accuracy on evaluation data: $c / ${evaluationData.size}")
     }
 
   def sgd(): Unit = {
@@ -157,6 +158,7 @@ class BreezeNetworkAsync(topology: List[Int],
     processEpoch(Nil)(0,
                       System.currentTimeMillis(),
                       BiasesAndWeights(biases, weights))
+
   }
 }
 
@@ -166,7 +168,7 @@ object BreezeNetworkAsync {
     val topology = List(784, 100, 100, 10)
     val epochs = 30
     val batchSize = 100
-    val learningRate = 1.5
+    val learningRate = 0.5
     val lambda = 0.5
 
     val (trainingData, validationData, testData) = mnistData()
