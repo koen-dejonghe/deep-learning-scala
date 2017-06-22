@@ -1,7 +1,7 @@
 package botkop.nn.brz
 
-import breeze.linalg.{DenseMatrix, argmax}
-import breeze.numerics.sigmoid
+import breeze.linalg.{DenseMatrix, argmax, sum}
+import breeze.numerics.{exp, sigmoid}
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,6 +30,12 @@ class BreezeNetworkAsync(topology: List[Int],
     lazy val zipped: List[(DoubleMatrix, DoubleMatrix)] = biases.zip(weights)
   }
 
+
+  def softmax(z: DoubleMatrix): DoubleMatrix = {
+    val zexp = exp(z)
+    zexp /:/ sum(zexp)
+  }
+
   @tailrec
   private def feedForward(
       acc: List[DoubleMatrix],
@@ -37,7 +43,7 @@ class BreezeNetworkAsync(topology: List[Int],
     bws match {
       case (b, w) :: rbws =>
         val z = (w * acc.head) + b
-        val a = sigmoid(z)
+        val a = if (rbws.isEmpty) softmax(z) else sigmoid(z)
         feedForward(a :: acc, rbws)
       case Nil =>
         acc.reverse
@@ -168,7 +174,7 @@ object BreezeNetworkAsync {
     val topology = List(784, 100, 100, 10)
     val epochs = 30
     val batchSize = 100
-    val learningRate = 0.5
+    val learningRate = 0.3
     val lambda = 0.5
 
     val (trainingData, validationData, testData) = mnistData()
