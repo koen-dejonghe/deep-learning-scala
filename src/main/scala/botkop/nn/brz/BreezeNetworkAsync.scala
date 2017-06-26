@@ -32,7 +32,7 @@ class BreezeNetworkAsync(topology: List[Int],
 
 
   def softmax(z: DoubleMatrix): DoubleMatrix = {
-    val zexp = exp(z)
+    val zexp = exp(z) + 0.001
     zexp /:/ sum(zexp)
   }
 
@@ -44,6 +44,7 @@ class BreezeNetworkAsync(topology: List[Int],
       case (b, w) :: rbws =>
         val z = (w * acc.head) + b
         val a = if (rbws.isEmpty) softmax(z) else sigmoid(z)
+        // val a = sigmoid(z)
         feedForward(a :: acc, rbws)
       case Nil =>
         acc.reverse
@@ -174,7 +175,7 @@ object BreezeNetworkAsync {
     val topology = List(784, 100, 100, 10)
     val epochs = 30
     val batchSize = 100
-    val learningRate = 0.3
+    val learningRate = 0.5
     val lambda = 0.5
 
     val (trainingData, validationData, testData) = mnistData()
