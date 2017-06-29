@@ -43,8 +43,8 @@ class BreezeNetworkAsync(topology: List[Int],
     bws match {
       case (b, w) :: rbws =>
         val z = (w * acc.head) + b
-        val a = if (rbws.isEmpty) softmax(z) else sigmoid(z)
-        // val a = sigmoid(z)
+        // val a = if (rbws.isEmpty) softmax(z) else sigmoid(z)
+        val a = sigmoid(z)
         feedForward(a :: acc, rbws)
       case Nil =>
         acc.reverse
