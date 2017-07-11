@@ -45,7 +45,7 @@ class BreezeNetworkAsync(topology: List[Int],
         val z = (w * acc.head) + b
         // val a = if (rbws.isEmpty) softmax(z) else sigmoid(z)
         val a = sigmoid(z)
-        feedForward(a :: acc, rbws)
+        feedForward(a :: acc, rbws) // prepending is cheaper than appending
       case Nil =>
         acc.reverse
     }
@@ -66,14 +66,13 @@ class BreezeNetworkAsync(topology: List[Int],
           nbl: List[DoubleMatrix],
           nwl: List[DoubleMatrix]): (List[DoubleMatrix], List[DoubleMatrix]) =
         if (l > 0) {
-          val sp = activations(l) *:* (-activations(l) + 1.0)
+          val sp = activations(l) *:* (-activations(l) + 1.0) // derivative of the sigmoid activation (sigmoid prime)
           val db = (bw.weights(l).t * nbl.head) *:* sp
           val dw = db * activations(l - 1).t
           r(l - 1, db :: nbl, dw :: nwl)
         } else {
           (nbl, nwl)
         }
-
       r(topology.size - 2, List(deltaBias), List(deltaWeight))
     }
   }
