@@ -1,7 +1,8 @@
 package botkop.nn.brz
 
-import breeze.linalg.{DenseMatrix, argmax, sum}
-import breeze.numerics.{exp, sigmoid}
+import breeze.generic.{MappingUFunc, UFunc}
+import breeze.linalg._
+import breeze.numerics._
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -44,10 +45,11 @@ class BreezeNetworkAsync(topology: List[Int],
       case (b, w) :: rbws =>
         val z = (w * acc.head) + b
         // val a = if (rbws.isEmpty) softmax(z) else sigmoid(z)
-        val a = sigmoid(z)
+//        val a = sigmoid(z)
+        val a = if (rbws.isEmpty) softmax(z) else relu(z)
         feedForward(a :: acc, rbws) // prepending is cheaper than appending
       case Nil =>
-        acc.reverse
+        acc.reverse // when done, reverse the
     }
 
   def backProp(x: DoubleMatrix, y: DoubleMatrix)(implicit bw: BiasesAndWeights)
@@ -66,7 +68,8 @@ class BreezeNetworkAsync(topology: List[Int],
           nbl: List[DoubleMatrix],
           nwl: List[DoubleMatrix]): (List[DoubleMatrix], List[DoubleMatrix]) =
         if (l > 0) {
-          val sp = activations(l) *:* (-activations(l) + 1.0) // derivative of the sigmoid activation (sigmoid prime)
+           val sp = reluPrime(activations(l))
+//          val sp = sigmoidPrime(activations(l))
           val db = (bw.weights(l).t * nbl.head) *:* sp
           val dw = db * activations(l - 1).t
           r(l - 1, db :: nbl, dw :: nwl)
@@ -113,7 +116,7 @@ class BreezeNetworkAsync(topology: List[Int],
       // update weights
       weights.zip(inw).foreach {
         case (w, nw) =>
-          w *= lln
+          // w *= lln
           w -= nw * lm
       }
 
@@ -171,11 +174,17 @@ class BreezeNetworkAsync(topology: List[Int],
 object BreezeNetworkAsync {
 
   def main(args: Array[String]) {
-    val topology = List(784, 100, 100, 10)
+    val topology = List(784, 100, 10)
     val epochs = 30
     val batchSize = 100
-    val learningRate = 0.5
-    val lambda = 0.5
+    // for sigmoid
+    // val learningRate = 0.5
+    // val lambda = 0.5
+
+    // for relu + softmax
+    // val learningRate = 0.01
+    val learningRate = 0.09
+    val lambda = 0.001
 
     val (trainingData, validationData, testData) = mnistData()
 

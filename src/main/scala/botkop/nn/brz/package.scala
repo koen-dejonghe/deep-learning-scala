@@ -3,6 +3,8 @@ package botkop.nn
 import java.io.{BufferedInputStream, FileInputStream}
 import java.util.zip.GZIPInputStream
 
+import breeze.generic.{MappingUFunc, UFunc}
+import breeze.linalg.Counter.Impl
 import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.stats.distributions.Rand
 
@@ -24,7 +26,10 @@ package object brz {
       .map(t => (t.head, t(1)))
       .map {
         case (x, y) =>
-          DenseMatrix.rand[Double](y, x, Rand.gaussian) /:/ Math.sqrt(x)
+          // Xavier initialization
+//          DenseMatrix.rand[Double](y, x, Rand.gaussian) /:/ Math.sqrt(y)
+          // patch for relu
+           DenseMatrix.rand[Double](y, x, Rand.gaussian) /:/ Math.sqrt(y / 2.0)
       }
       .toList
 
@@ -67,6 +72,21 @@ package object brz {
     println("done reading test data")
 
     (trainingData, validationData, testData)
+  }
+
+  import scala.{math => m}
+  object reluPrime extends UFunc with MappingUFunc {
+    implicit object relupDoubleImpl extends Impl[Double, Double] { def apply(v: Double): Double = m.max(0.0, v)}
+    implicit object relupFloatImpl extends Impl[Float, Float] { def apply(v: Float): Float = m.max(0.0f, v)}
+    implicit object relupabsIntImpl extends Impl[Int, Int] { def apply(v: Int): Int = m.max(0, v)}
+    implicit object relupabsLongImpl extends Impl[Long, Long] { def apply(v: Long): Long = m.max(0L, v)}
+  }
+
+  object sigmoidPrime extends UFunc with MappingUFunc {
+    implicit object spDoubleImpl extends Impl[Double, Double] { def apply(v: Double): Double = v * (1.0 - v) }
+    implicit object spFloatImpl extends Impl[Float, Float] { def apply(v: Float): Float = v * (1.0f - v) }
+    implicit object spIntImpl extends Impl[Int, Int] { def apply(v: Int): Int = v * (1 - v) }
+    implicit object spLongImpl extends Impl[Long, Long] { def apply(v: Long): Long = v * (1L - v) }
   }
 
 }
