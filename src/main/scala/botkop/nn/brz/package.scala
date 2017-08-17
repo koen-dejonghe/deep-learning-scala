@@ -4,8 +4,7 @@ import java.io.{BufferedInputStream, FileInputStream}
 import java.util.zip.GZIPInputStream
 
 import breeze.generic.{MappingUFunc, UFunc}
-import breeze.linalg.Counter.Impl
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg.DenseMatrix
 import breeze.stats.distributions.Rand
 
 import scala.io.Source
@@ -88,5 +87,22 @@ package object brz {
     implicit object spIntImpl extends Impl[Int, Int] { def apply(v: Int): Int = v * (1 - v) }
     implicit object spLongImpl extends Impl[Long, Long] { def apply(v: Long): Long = v * (1L - v) }
   }
+
+  def concat(data: List[DenseMatrix[Double]]): DenseMatrix[Double] = {
+    require(data.nonEmpty)
+    val numRows = data.size
+    val numCols = data.head.rows
+    val X = DenseMatrix.zeros[Double](numRows, numCols)
+    for (i <- 0 until numRows) {
+      val row = data(i).t
+      for (j <- 0 until numCols) {
+        val v: Double = row(0, j)
+        X.update(i, j, v)
+      }
+    }
+    X
+  }
+
+
 
 }
