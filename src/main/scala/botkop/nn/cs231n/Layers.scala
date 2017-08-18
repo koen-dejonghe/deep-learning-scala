@@ -4,6 +4,8 @@ import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.ops.transforms.Transforms
 
+import scala.language.postfixOps
+
 object Layers {
 
   class LayerCache
@@ -92,8 +94,9 @@ object Layers {
     *     - dx: Gradient with respect to x
     */
   def reluBackward(dout: INDArray, cache: INDArray): INDArray = {
-    val x = cache.data().asDouble().map(d => if (d <= 0.0) 0.0 else 1.0)
-    val dx = dout mul Nd4j.create(cache.shape, x)
+    val xData = cache.data().asDouble().map(d => if (d <= 0.0) 0.0 else 1.0)
+    val x = Nd4j.create(cache.shape, xData)
+    val dx = dout mul x
     dx
   }
 
@@ -144,10 +147,7 @@ object Layers {
         val correctIdx = yData(rowId)
         val np = numPos(rowId)
         val dRow: Array[Double] = row.map { d =>
-          if (d > 0.0)
-            1.0
-          else
-            0.0
+          if (d > 0.0) 1.0 else 0.0
         }
         dRow(correctIdx) -= np
         dRow.map(_ / n)
@@ -172,24 +172,28 @@ object Layers {
     */
   def softmaxLoss(x: INDArray, y: INDArray): (Double, INDArray) = {
 
+    val n = x.shape().head
+    val c = x.shape()(1)
+
+    val yData = y.data.asInt
+
     val shiftedLogits = x subColumnVector Nd4j.max(x, 1)
     val z = Nd4j.sum(Transforms.exp(shiftedLogits), 1)
     val logProbs = shiftedLogits subColumnVector Transforms.log(z)
     val probs = Transforms.exp(logProbs)
-    val n = x.shape()(0).toDouble
     val loss = logProbs
       .data()
       .asDouble()
-      .grouped(x.shape()(1))
-      .zip(y.data.asInt.iterator)
+      .grouped(c)
+      .zip(yData.iterator)
       .foldLeft(0.0) {
         case (acc, (row, index)) =>
           acc - row(index)
       } / n
 
     val dxData = probs.data.asDouble
-      .grouped(x.shape()(1))
-      .zip(y.data.asInt.iterator)
+      .grouped(c)
+      .zip(yData.iterator)
       .map {
         case (row, correctIndex) =>
           row(correctIndex) -= 1.0
@@ -199,6 +203,6 @@ object Layers {
 
     val dx = Nd4j.create(dxData).reshape(x.shape(): _*)
     (loss, dx)
-
   }
+
 }

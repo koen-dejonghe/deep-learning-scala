@@ -117,7 +117,6 @@ class LayersSpec extends FlatSpec with Matchers {
 
     val dxError = relError(dx, dxNum)
     dxError should be < 1.5e-9
-
   }
 
   it should "correctly compute the softmax loss and gradient" in {
@@ -126,7 +125,7 @@ class LayersSpec extends FlatSpec with Matchers {
     val numInputs = 50
 
     val x = Nd4j.randn(numInputs, numClasses) mul 0.001
-    val y = Nd4j.rand(numClasses, numInputs)
+    val y: INDArray = Nd4j.rand(1, numInputs) mul 10
 
     def fdx(a: INDArray) = Layers.softmaxLoss(x, y)._1
     val dxNum = evalNumericalGradient(fdx, x)
@@ -148,7 +147,6 @@ class LayersSpec extends FlatSpec with Matchers {
                                  x: INDArray,
                                  df: INDArray,
                                  h: Double = 1e-5): INDArray = {
-
     val grad = Nd4j.zeros(x.shape(): _*)
     val iter = new NdIndexIterator(x.shape(): _*)
     while (iter.hasNext) {
@@ -167,7 +165,6 @@ class LayersSpec extends FlatSpec with Matchers {
       val g = Nd4j.sum((pos sub neg) mul df) div (2.0 * h)
       grad.put(ii, g)
     }
-
     grad
   }
 
