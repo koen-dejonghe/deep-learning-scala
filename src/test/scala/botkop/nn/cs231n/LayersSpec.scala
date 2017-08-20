@@ -2,11 +2,11 @@ package botkop.nn.cs231n
 
 import org.nd4j.linalg.api.buffer.DataBuffer
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil
-import org.nd4j.linalg.api.iter.NdIndexIterator
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
-import org.nd4j.linalg.indexing.NDArrayIndex
 import org.scalatest.{FlatSpec, Matchers}
+
+import scala.util.Random
 
 class LayersSpec extends FlatSpec with Matchers {
 
@@ -125,85 +125,19 @@ class LayersSpec extends FlatSpec with Matchers {
     val numInputs = 50
 
     val x = Nd4j.randn(numInputs, numClasses) mul 0.001
-    val y: INDArray = Nd4j.rand(1, numInputs) mul 10
 
-    def fdx(a: INDArray) = Layers.softmaxLoss(x, y)._1
-    val dxNum = evalNumericalGradient(fdx, x)
+    val yData  = for (_ <- 0 until numInputs) yield Random.nextInt(numClasses).toDouble
+    val y = Nd4j.create(yData.toArray).reshape(numInputs, 1)
 
-    val result = Layers.softmaxLoss(x, y)
-    val loss = result._1
-    val dx = result._2
+    def fdx(a: INDArray) = Layers.softmaxLoss(a, y)._1
+    val dxNum: INDArray = evalNumericalGradient(fdx, x)
+
+    val (loss, dx) = Layers.softmaxLoss(x, y)
 
     loss should equal (2.3 +- 0.2)
 
     val dxError = relError(dx, dxNum)
     dxError should be < 1e-7
-  }
-
-  /**
-    * Evaluate a numeric gradient for a function that accepts an array and returns an array.
-    */
-  def evalNumericalGradientArray(f: (INDArray) => INDArray,
-                                 x: INDArray,
-                                 df: INDArray,
-                                 h: Double = 1e-5): INDArray = {
-    val grad = Nd4j.zeros(x.shape(): _*)
-    val iter = new NdIndexIterator(x.shape(): _*)
-    while (iter.hasNext) {
-      val nextIter = iter.next
-      val ii = NDArrayIndex.indexesFor(nextIter: _*)
-
-      val oldVal = x.getDouble(nextIter: _*)
-
-      x.put(ii, oldVal + h)
-      val pos = f(x)
-
-      x.put(ii, oldVal - h)
-      val neg = f(x)
-
-      x.put(ii, oldVal)
-      val g = Nd4j.sum((pos sub neg) mul df) div (2.0 * h)
-      grad.put(ii, g)
-    }
-    grad
-  }
-
-  def evalNumericalGradient(f: (INDArray) => Double,
-                            x: INDArray,
-                            h: Double = 0.00001): INDArray = {
-
-    val grad = Nd4j.zeros(x.shape(): _*)
-    val iter = new NdIndexIterator(x.shape(): _*)
-    while (iter.hasNext) {
-      val nextIter = iter.next
-      val ii = NDArrayIndex.indexesFor(nextIter: _*)
-
-      val oldVal = x.getDouble(nextIter: _*)
-
-      x.put(ii, oldVal + h)
-      val pos = f(x)
-
-      x.put(ii, oldVal - h)
-      val neg = f(x)
-
-      x.put(ii, oldVal)
-
-      val g = (pos - neg) / (2.0 * h)
-      grad.put(ii, g)
-    }
-
-    grad
-  }
-
-  /**
-    * returns relative error
-    */
-  def relError(x: INDArray, y: INDArray): Double = {
-    import org.nd4j.linalg.ops.transforms.Transforms._
-    val n = abs(x sub y)
-
-    val d = max(abs(x.dup()) add abs(y.dup()), 1e-8)
-    Nd4j.max(n div d).getDouble(0)
   }
 
 }

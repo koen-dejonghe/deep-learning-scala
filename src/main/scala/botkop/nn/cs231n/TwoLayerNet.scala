@@ -14,17 +14,45 @@ class TwoLayerNet(inputDim: Int = 3 * 32 * 32,
   val w2: INDArray = Nd4j.randn(Array(hiddenDim, numClasses)) mul weightScale
   val b2: INDArray = Nd4j.zeros(numClasses)
 
-  def loss(x: INDArray, y: Option[INDArray] = None): INDArray = {
+  /* for testing purposes */
+  def scores(x: INDArray,
+           lw1: INDArray = w1,
+           lb1: INDArray = b1,
+           lw2: INDArray = w2,
+           lb2: INDArray = b2): INDArray = {
 
-    val fa1: (INDArray, Layers.AffineCache) = Layers.affineForward(x, w1, b1)
+    val fa1: (INDArray, Layers.AffineCache) = Layers.affineForward(x, lw1, lb1)
     val rf1: (INDArray, INDArray) = Layers.reluForward(fa1._1)
-    val fa2: (INDArray, Layers.AffineCache) = Layers.affineForward(rf1._1, w2, b2)
-    val rf2: (INDArray, INDArray) = Layers.reluForward(fa2._1)
-
-    val scores = rf2._2
+    val (scores, _): (INDArray, Layers.AffineCache) = Layers.affineForward(rf1._1, lw2, lb2)
 
     scores
+  }
 
+  def loss(x: INDArray,
+           y: INDArray,
+           lw1: INDArray = w1,
+           lb1: INDArray = b1,
+           lw2: INDArray = w2,
+           lb2: INDArray = b2): (Double, Map[String, INDArray]) = {
+
+    val (af1out, af1cache): (INDArray, Layers.AffineCache) = Layers.affineForward(x, lw1, lb1)
+    val (rl1out, rl1cache): (INDArray, INDArray) = Layers.reluForward(af1out)
+    val (af2out, af2cache) = Layers.affineForward(rl1out, lw2, lb2)
+
+    val scores = af2out
+
+    val (dataLoss, dout) = Layers.softmaxLoss(scores, y)
+    val regLoss = 0.5 * reg * (Nd4j.sum(lw1 mul lw1).getDouble(0) + Nd4j.sum(lw2 mul lw2).getDouble(0))
+    val loss = dataLoss + regLoss
+
+    val (dx2, dw2, db2) = Layers.affineBackward(dout, af2cache)
+    val da = Layers.reluBackward(dx2, rl1cache)
+    val (dx1, dw1, db1) = Layers.affineBackward(da, af1cache)
+
+    val gw2 = dw2 add (lw2 mul reg)
+    val gw1 = dw1 add (lw1 mul reg)
+
+    (loss, Map("W2" -> gw2, "b2" -> db2, "W1" -> gw1, "b1" -> db1))
   }
 
 

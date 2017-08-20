@@ -1,4 +1,4 @@
-package botkop.nn.jazz
+package botkop.nn.actors.brol
 
 import scala.annotation.tailrec
 import scala.language.postfixOps
