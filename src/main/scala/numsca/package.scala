@@ -1,6 +1,8 @@
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.ops.transforms.Transforms
 
+import scala.util.Random
+
 package object numsca {
 
   def array(data: Array[Double], shape: Array[Int]) =
@@ -22,6 +24,13 @@ package object numsca {
 
   def randn(shape: Int*) = new Tensor(Nd4j.randn(shape.toArray))
 
+  def randint(low: Int, shape: Array[Int]): Tensor = {
+    val data = Array.fill(shape.product)(Random.nextInt(low).toDouble)
+    array(data, shape)
+  }
+
+  def randint(low: Int, shape: Int*): Tensor = randint(low, shape.toArray)
+
   def linspace(lower: Double, upper: Double, shape: Array[Int]): Tensor = {
     val array = Nd4j.linspace(lower, upper, shape.product)
     if (shape.length > 1)
@@ -36,8 +45,12 @@ package object numsca {
   def abs(t: Tensor) = new Tensor(Transforms.abs(t.array))
 
   def max(t: Tensor, d: Double) = new Tensor(Transforms.max(t.array, d))
+  def maximum(d: Double, t: Tensor) = new Tensor(Transforms.max(t.array, d))
   def max(t: Tensor) = new Tensor(Nd4j.max(t.array))
 
   def sum(t: Tensor, axis: Int) = new Tensor(Nd4j.sum(t.array, axis))
   def sum(t: Tensor) = new Tensor(Nd4j.sum(t.array))
+
+  def arange(end: Double) = new Tensor(Nd4j.arange(end))
+  def arange(start: Double, end: Double) = new Tensor(Nd4j.arange(start, end))
 }

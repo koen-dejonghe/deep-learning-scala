@@ -1,11 +1,8 @@
 package botkop.nn.jazz
 
-import botkop.nn.cs231n.{Layers, evalNumericalGradientArray, relError}
 import numsca._
 import org.nd4j.linalg.api.buffer.DataBuffer
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil
-import org.nd4j.linalg.api.ndarray.INDArray
-import org.nd4j.linalg.factory.Nd4j
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
 class LayerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
@@ -90,6 +87,26 @@ class LayerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val dxError = relError(dx, dxNum)
 
     dxError should be < 1e-11
+  }
+
+  it should "correctly compute the svm loss and gradient" in {
+    val numClasses = 10
+    val numInputs = 50
+
+    val x = randn(numInputs, numClasses) * 0.001
+    val y = randint(numClasses, numInputs)
+
+    def fdx(a: Tensor) = Layers.svmLoss(x, y)._1
+    val dxNum = evalNumericalGradient(fdx, x)
+
+    val result = Layers.svmLoss(x, y)
+    val loss = result._1
+    val dx = result._2
+
+    loss should equal (9.0 +- 0.2)
+
+    val dxError = relError(dx, dxNum)
+    dxError should be < 1.5e-9
   }
 
 

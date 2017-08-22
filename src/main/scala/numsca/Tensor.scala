@@ -25,6 +25,22 @@ class Tensor(val array: INDArray) {
 
   def /(d: Double) = new Tensor(this.array div d)
 
+  def +=(d: Double): Unit = data.zipWithIndex.foreach {
+    case (x, i) => data(i) = x + d
+  }
+
+  def -=(d: Double): Unit = data.zipWithIndex.foreach {
+    case (x, i) => data(i) = x - d
+  }
+
+  def *=(d: Double): Unit = data.zipWithIndex.foreach {
+    case (x, i) => data(i) = x * d
+  }
+
+  def /=(d: Double): Unit = data.zipWithIndex.foreach {
+    case (x, i) => data(i) = x / d
+  }
+
   def >(d: Double): Tensor = {
     val xs = data.map(x => if (x > d) 1.0 else 0.0)
     numsca.array(xs, this.shape)
@@ -55,7 +71,8 @@ class Tensor(val array: INDArray) {
         if (other.shape(1) == 1)
           new Tensor(this.array addColumnVector other.array)
         else {
-          throw new Exception(s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
+          throw new Exception(
+            s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
         }
       }
     }
@@ -70,7 +87,8 @@ class Tensor(val array: INDArray) {
         if (other.shape(1) == 1)
           new Tensor(this.array subColumnVector other.array)
         else {
-          throw new Exception(s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
+          throw new Exception(
+            s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
         }
       }
     }
@@ -85,7 +103,8 @@ class Tensor(val array: INDArray) {
         if (other.shape(1) == 1)
           new Tensor(this.array mulColumnVector other.array)
         else {
-          throw new Exception(s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
+          throw new Exception(
+            s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
         }
       }
     }
@@ -100,7 +119,8 @@ class Tensor(val array: INDArray) {
         if (other.shape(1) == 1)
           new Tensor(this.array divColumnVector other.array)
         else {
-          throw new Exception(s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
+          throw new Exception(
+            s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
         }
       }
     }
@@ -108,7 +128,37 @@ class Tensor(val array: INDArray) {
   def apply(index: Int*): Double = array.getDouble(index: _*)
   def apply(index: Array[Int]): Double = array.getDouble(index: _*)
 
-  def put(index: Int*)(d: Double): Unit = array.put(NDArrayIndex.indexesFor(index: _*), d)
-  def put(index: Array[Int], d: Double): Unit = array.put(NDArrayIndex.indexesFor(index: _*), d)
+  /*
+  def apply(ts: Tensor*): Tensor = {
+    @tailrec
+    def select(lt: List[Tensor], acc: Tensor): Tensor = lt match {
+      case Nil => acc
+      case t :: lts =>
+        // println(t.array.data().asInt().toList)
+        val at = acc.array.transpose()
+        val dt = at.getRows(t.array.data().asInt(): _*)
+        // println(acc)
+        // println
+        select(lts, new Tensor(dt.transpose()))
+    }
+    select(ts.toList, this.transpose)//.transpose
+  }
+  def apply(ts: Array[Tensor]): Tensor = apply(ts: _*)
+  */
+
+  def apply(t: Tensor): Tensor = {
+    val indexes = t.data.map(_.toInt)
+    val rows = data.grouped(shape(1)).toArray
+    val newData = indexes.flatMap(i => rows(i))
+    numsca.array(newData, shape)
+  }
+
+  def put(index: Int*)(d: Double): Unit =
+    array.put(NDArrayIndex.indexesFor(index: _*), d)
+  def put(index: Array[Int], d: Double): Unit =
+    array.put(NDArrayIndex.indexesFor(index: _*), d)
+  def put(d: Double): Unit = array.linearView().data().assign(d)
+
+  override def toString: String = array.toString
 
 }

@@ -2,6 +2,9 @@ package botkop.nn
 
 import numsca._
 import org.nd4j.linalg.api.iter.NdIndexIterator
+import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.factory.Nd4j
+import org.nd4j.linalg.indexing.NDArrayIndex
 
 package object jazz {
   /**
@@ -37,5 +40,28 @@ package object jazz {
     }
     grad
   }
+
+  def evalNumericalGradient(f: (Tensor) => Double,
+                            x: Tensor,
+                            h: Double = 0.00001): Tensor = {
+
+    val grad = zeros(x.shape)
+    val iter = new NdIndexIterator(x.shape: _*)
+    while (iter.hasNext) {
+      val nextIter = iter.next
+
+      val oldVal = x(nextIter)
+      x.put(nextIter, oldVal + h)
+      val pos = f(x)
+      x.put(nextIter, oldVal - h)
+      val neg = f(x)
+      x.put(nextIter, oldVal)
+      val g = (pos - neg) / (2.0 * h)
+      grad.put(nextIter, g)
+    }
+
+    grad
+  }
+
 
 }
