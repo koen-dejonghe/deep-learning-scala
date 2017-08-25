@@ -1,6 +1,7 @@
 package numsca
 
 import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.indexing.NDArrayIndex
 
 class Tensor(val array: INDArray) {
@@ -160,5 +161,15 @@ class Tensor(val array: INDArray) {
   def put(d: Double): Unit = array.linearView().data().assign(d)
 
   override def toString: String = array.toString
+
+
+}
+
+object Tensor {
+
+  def apply(data: Array[Double]): Tensor = {
+    val array = Nd4j.create(data)
+    new Tensor(array)
+  }
 
 }
