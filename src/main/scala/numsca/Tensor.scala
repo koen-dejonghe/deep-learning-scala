@@ -63,68 +63,56 @@ class Tensor(val array: INDArray) {
   }
 
   def +(other: Tensor): Tensor =
-    if (this.shape sameElements other.shape) {
+    if (this.shape sameElements other.shape)
       new Tensor(this.array add other.array)
-    } else {
-      if (other.shape(0) == 1)
-        new Tensor(this.array addRowVector other.array)
-      else {
-        if (other.shape(1) == 1)
-          new Tensor(this.array addColumnVector other.array)
-        else {
-          throw new Exception(
-            s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
-        }
-      }
-    }
+    else if (other.shape sameElements Array(1, 1))
+      new Tensor(this.array add other.array)
+    else if (other.shape(0) == 1)
+      new Tensor(this.array addRowVector other.array)
+    else if (other.shape(1) == 1)
+      new Tensor(this.array addColumnVector other.array)
+    else
+      throw new Exception(
+        s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
 
   def -(other: Tensor): Tensor =
-    if (this.shape sameElements other.shape) {
+    if (this.shape sameElements other.shape)
       new Tensor(this.array sub other.array)
-    } else {
-      if (other.shape(0) == 1)
-        new Tensor(this.array subRowVector other.array)
-      else {
-        if (other.shape(1) == 1)
-          new Tensor(this.array subColumnVector other.array)
-        else {
-          throw new Exception(
-            s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
-        }
-      }
-    }
+    else if (other.shape sameElements Array(1, 1))
+      new Tensor(this.array sub other.array)
+    else if (other.shape(0) == 1)
+      new Tensor(this.array subRowVector other.array)
+    else if (other.shape(1) == 1)
+      new Tensor(this.array subColumnVector other.array)
+    else
+      throw new Exception(
+        s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
 
   def *(other: Tensor): Tensor =
-    if (this.shape sameElements other.shape) {
+    if (this.shape sameElements other.shape)
       new Tensor(this.array mul other.array)
-    } else {
-      if (other.shape(0) == 1)
-        new Tensor(this.array mulRowVector other.array)
-      else {
-        if (other.shape(1) == 1)
-          new Tensor(this.array mulColumnVector other.array)
-        else {
-          throw new Exception(
-            s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
-        }
-      }
-    }
+    else if (other.shape sameElements Array(1, 1))
+      new Tensor(this.array mul other.array)
+    else if (other.shape(0) == 1)
+      new Tensor(this.array mulRowVector other.array)
+    else if (other.shape(1) == 1)
+      new Tensor(this.array mulColumnVector other.array)
+    else
+      throw new Exception(
+        s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
 
   def /(other: Tensor): Tensor =
-    if (this.shape sameElements other.shape) {
+    if (this.shape sameElements other.shape)
       new Tensor(this.array div other.array)
-    } else {
-      if (other.shape(0) == 1)
-        new Tensor(this.array divRowVector other.array)
-      else {
-        if (other.shape(1) == 1)
-          new Tensor(this.array divColumnVector other.array)
-        else {
-          throw new Exception(
-            s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
-        }
-      }
-    }
+    else if (other.shape sameElements Array(1, 1))
+      new Tensor(this.array div other.array)
+    else if (other.shape(0) == 1)
+      new Tensor(this.array divRowVector other.array)
+    else if (other.shape(1) == 1)
+      new Tensor(this.array divColumnVector other.array)
+    else
+      throw new Exception(
+        s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
 
   def apply(index: Int*): Double = array.getDouble(index: _*)
   def apply(index: Array[Int]): Double = array.getDouble(index: _*)
@@ -145,13 +133,15 @@ class Tensor(val array: INDArray) {
     select(ts.toList, this.transpose)//.transpose
   }
   def apply(ts: Array[Tensor]): Tensor = apply(ts: _*)
-  */
+   */
 
   def apply(t: Tensor): Tensor = {
+    require(t.shape(0) == 1)
     val indexes = t.data.map(_.toInt)
     val rows = data.grouped(shape(1)).toArray
     val newData = indexes.flatMap(i => rows(i))
-    numsca.array(newData, shape)
+    val newShape = t.shape(1) +: shape.tail
+    numsca.array(newData, newShape)
   }
 
   def put(index: Int*)(d: Double): Unit =
@@ -160,8 +150,9 @@ class Tensor(val array: INDArray) {
     array.put(NDArrayIndex.indexesFor(index: _*), d)
   def put(d: Double): Unit = array.linearView().data().assign(d)
 
-  override def toString: String = array.toString
+  def ufunc(f: (Double) => Double): Tensor = Tensor(data.map(f)).reshape(shape)
 
+  override def toString: String = array.toString
 
 }
 
@@ -172,4 +163,5 @@ object Tensor {
     new Tensor(array)
   }
 
+  def apply(data: Double*): Tensor = Tensor(data.toArray)
 }

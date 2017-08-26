@@ -4,6 +4,11 @@ import numsca.Tensor
 
 import scala.language.postfixOps
 
+class Cache
+class LinearForwardCache(a: Tensor, w: Tensor, b: Tensor) extends Cache
+class LinearActivationForwardCache(linearCache: LinearForwardCache, a: Tensor)
+    extends Cache
+
 object AndrewNet extends App {
 
   def initializeParametersDeep(layerDims: Array[Int]): Map[String, Tensor] = {
@@ -18,14 +23,10 @@ object AndrewNet extends App {
 
   def linearForward(a: Tensor,
                     w: Tensor,
-                    b: Tensor): (Tensor, (Tensor, Tensor, Tensor)) = {
-    val z = if (b.shape sameElements Array(1, 1)) {
-      w.dot(a) + b.data(0)
-    } else {
-      w.dot(a) + b
-    }
+                    b: Tensor): (Tensor, LinearForwardCache) = {
+    val z = w.dot(a) + b
     assert(z.shape sameElements Array(w.shape(0), a.shape(1)))
-    val cache = (a, w, b)
+    val cache = new LinearForwardCache(a, w, b)
     (z, cache)
   }
 
@@ -33,44 +34,33 @@ object AndrewNet extends App {
                               w: Tensor,
                               b: Tensor,
                               activation: (Tensor) => (Tensor, Tensor))
-    : (Tensor, ((Tensor, Tensor, Tensor), Tensor)) = {
+    : (Tensor, LinearActivationForwardCache) = {
     val (z, linearCache) = linearForward(aPrev, w, b)
     val (a, activationCache) = activation(z)
-    val cache = (linearCache, activationCache)
+    val cache = new LinearActivationForwardCache(linearCache, activationCache)
     (a, cache)
   }
 
-  def reluForward(z: Tensor): (Tensor, Tensor) = {
+  def reluForward = (z: Tensor) => {
     val a = numsca.maximum(0.0, z)
     (a, z)
   }
 
-  def testLinearForward(): Unit = {
-    val m = 3 // num samples
-    val ni = 5 // num input features
-    val no = 5 // num output features
+  def sigmoidForward = (z: Tensor) => (numsca.sigmoid(z), z)
 
-    val x = numsca.arange(ni * m).reshape(ni, m)
-    val w = numsca.ones(no, ni)
-    val b = numsca.ones(no, 1)
-    val (z, cache) = linearForward(x, w, b)
+  def lModelForward(x: Tensor,
+                    parameters: Map[String, Tensor]): (Tensor, List[Cache]) = {
+    val numLayers = parameters.size / 2
 
-    assert(z.shape sameElements Array(no, m))
-    println(z)
+    (1 to numLayers).foldLeft(x, List.empty[Cache]) {
+      case ((aPrev, caches), l) =>
+        val w = parameters(s"W$l")
+        val b = parameters(s"b$l")
+        val activation = if (l == numLayers) sigmoidForward else reluForward
+        val (a, cache) = linearActivationForward(aPrev, w, b, activation)
+        (a, caches :+ cache)
+    }
+
   }
-
-  // testLinearForward()
-
-  def testLinearForwardRelu(): Unit = {
-    val aPrev = Tensor(
-      Array(-0.41675785, -0.05626683, -2.1361961, 1.64027081, -1.79343559,
-        -0.84174737)).reshape(3, 2)
-    val w = Tensor(Array(0.50288142, -1.24528809, -1.05795222)).reshape(1, 3)
-    val b = Tensor(Array(-0.90900761))
-
-    linearActivationForward(aPrev, w, b, reluForward)
-  }
-
-  testLinearForwardRelu()
 
 }
