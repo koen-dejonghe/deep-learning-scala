@@ -152,6 +152,8 @@ class Tensor(val array: INDArray) {
 
   def ufunc(f: (Double) => Double): Tensor = Tensor(data.map(f)).reshape(shape)
 
+  def chs: Tensor = numsca.chs(this)
+
   override def toString: String = array.toString
 
 }

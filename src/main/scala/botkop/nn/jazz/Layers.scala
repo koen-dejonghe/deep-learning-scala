@@ -48,11 +48,13 @@ object Layers {
     val margins = maximum(0.0, x - correctClassScores + 1.0)
     margins(arange(n))(y).put(0.0)
     val loss = sum(margins)(0) / n
+
     val numPos = sum(margins > 0, axis=1)(0)
     val dx = zerosLike(x)
     dx(margins > 0).put(1.0)
     dx(arange(n))(y) -= numPos
     dx /= n
+
     (loss, dx)
   }
 

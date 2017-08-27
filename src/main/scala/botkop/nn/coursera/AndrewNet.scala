@@ -60,7 +60,14 @@ object AndrewNet extends App {
         val (a, cache) = linearActivationForward(aPrev, w, b, activation)
         (a, caches :+ cache)
     }
+  }
 
+  def crossEntropyCost(yHat: Tensor, y: Tensor): Double = {
+    val m = y.shape(1)
+    val logProbs = numsca.log(yHat) * y +
+      (y.chs + 1.0) * numsca.log(yHat.chs + 1.0)
+    val cost = -numsca.sum(logProbs)(0, 0) / m
+    cost
   }
 
 }

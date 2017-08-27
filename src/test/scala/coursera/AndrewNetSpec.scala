@@ -69,7 +69,13 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     al(0, 1) shouldBe 0.2524272 +- 1e-7
 
     caches.length shouldBe 2
+  }
 
+  it should "correctly calculate the cross entropy cost" in {
+    val y = Tensor(1.0, 1.0, 1.0).reshape(1, 3)
+    val yHat = Tensor(0.8, 0.9, 0.4).reshape(1, 3)
+    val cost = crossEntropyCost(yHat, y)
+    cost shouldBe 0.414931599615 +- 1e-8
   }
 
 }

@@ -55,5 +55,7 @@ package object numsca {
   def arange(start: Double, end: Double) = new Tensor(Nd4j.arange(start, end))
 
   def sigmoid(t: Tensor): Tensor = new Tensor(Transforms.sigmoid(t.array))
+  def log(t: Tensor): Tensor = new Tensor(Transforms.log(t.array))
+  def chs(t: Tensor): Tensor = t * -1.0
 
 }
