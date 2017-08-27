@@ -57,7 +57,7 @@ package object numsca {
   def sigmoid(t: Tensor): Tensor = new Tensor(Transforms.sigmoid(t.array))
   def log(t: Tensor): Tensor = new Tensor(Transforms.log(t.array))
   def chs(t: Tensor): Tensor = t * -1.0
-
   def power(t: Tensor, power: Double) = new Tensor(Transforms.pow(t.array, power))
+  def exp(t: Tensor): Tensor = new Tensor(Transforms.exp(t.array))
 
 }

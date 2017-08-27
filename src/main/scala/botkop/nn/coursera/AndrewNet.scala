@@ -52,7 +52,11 @@ object AndrewNet extends App {
   def sigmoidForward = (z: Tensor) => (numsca.sigmoid(z), z)
 
   def sigmoidBackward = (da: Tensor, cache: Tensor) => {
-    da * (numsca.power(cache, 2).chs + 1.0) //todo this wrong
+    val z = cache
+    // val s = numsca.power(numsca.exp(z.chs) + 1, -1)
+    val s = numsca.sigmoid(z)
+    val dz = da * s * (s.chs + 1)
+    dz
   }
 
   def lModelForward(x: Tensor,

@@ -98,7 +98,6 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     approxSameContents(daPrev, expectedDaPrev, 1e-8) shouldBe true
     approxSameContents(dw, expectedDw, 1e-8) shouldBe true
     approxSameContents(db, expectedDb, 1e-8) shouldBe true
-
   }
 
   it should "calculate the linear relu activation backward" in {
@@ -143,7 +142,7 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val dwExpected = Tensor(0.10266786, 0.09778551, -0.01968084).reshape(1, 3)
     val dbExpected = Tensor(-0.05729622)
 
-    approxSameContents(daPrev, daPrevExpected, 1e-7) shouldBe true
+    approxSameContents(daPrev, daPrevExpected, 1e-8) shouldBe true
     approxSameContents(dw, dwExpected, 1e-8) shouldBe true
     approxSameContents(db, dbExpected, 1e-8) shouldBe true
   }
@@ -152,8 +151,8 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     (t1.shape sameElements t2.shape) && {
       val a = t1.array.dup.data.asDouble
       val b = t2.array.dup.data.asDouble
-       println(a.toList)
-       println(b.toList)
+       // println(a.toList)
+       // println(b.toList)
       !a.zip(b).exists {
         case (d1, d2) => math.abs(d2 - d1) > deviation
       }
