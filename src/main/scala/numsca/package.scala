@@ -58,4 +58,6 @@ package object numsca {
   def log(t: Tensor): Tensor = new Tensor(Transforms.log(t.array))
   def chs(t: Tensor): Tensor = t * -1.0
 
+  def power(t: Tensor, power: Double) = new Tensor(Transforms.pow(t.array, power))
+
 }
