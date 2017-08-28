@@ -123,10 +123,10 @@ object AndrewNet extends App {
       rawY: Tensor,
       caches: List[LinearActivationCache]): Map[String, Tensor] = {
     val numLayers = caches.size
-    val m = al.shape(1)
     val y = rawY.reshape(al.shape)
 
-    val dal = -((y / al) - ((-y + 1) / (-al + 1)))
+    // derivative of cost with respect to AL
+    val dal = -(y / al - (-y + 1) / (-al + 1))
 
     (1 to numLayers).reverse
       .foldLeft(Map.empty[String, Tensor], dal) {
@@ -147,7 +147,7 @@ object AndrewNet extends App {
                        learningRate: Double): Map[String, Tensor] =
     parameters.map {
       case (k, v) =>
-        k -> { v - (grads(s"d$k") * learningRate) }
+        k -> { v - grads(s"d$k") * learningRate }
     }
 
 }
