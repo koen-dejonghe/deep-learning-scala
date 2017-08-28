@@ -12,6 +12,9 @@ class LinearActivationCache(val linearCache: LinearCache,
 
 object AndrewNet extends App {
 
+  type ForwardActivationFunction = Tensor => (Tensor, Tensor)
+  type BackwardActivationFunction = (Tensor, Tensor) => Tensor
+
   def initializeParametersDeep(layerDims: Array[Int]): Map[String, Tensor] = {
     for {
       l <- 1 until layerDims.length
@@ -32,7 +35,7 @@ object AndrewNet extends App {
   def linearActivationForward(aPrev: Tensor,
                               w: Tensor,
                               b: Tensor,
-                              activation: (Tensor) => (Tensor, Tensor))
+                              activation: ForwardActivationFunction)
     : (Tensor, LinearActivationCache) = {
     val (z, linearCache) = linearForward(aPrev, w, b)
     val (a, activationCache) = activation(z)
@@ -40,24 +43,31 @@ object AndrewNet extends App {
     (a, cache)
   }
 
-  def reluForward = (z: Tensor) => {
+  def reluForward: ForwardActivationFunction = (z: Tensor) => {
     val a = numsca.maximum(0.0, z)
     (a, z)
   }
 
-  def reluBackward = (da: Tensor, cache: Tensor) => {
-    da * (cache > 0.0)
-  }
+  def reluBackward: BackwardActivationFunction =
+    (da: Tensor, cache: Tensor) => {
+      da * (cache > 0.0)
+    }
 
-  def sigmoidForward = (z: Tensor) => (numsca.sigmoid(z), z)
+  def sigmoidForward: ForwardActivationFunction =
+    (z: Tensor) => {
+      (numsca.sigmoid(z), z)
+      // val s = numsca.sigmoid(z)
+      // (s, s)
+    }
 
-  def sigmoidBackward = (da: Tensor, cache: Tensor) => {
-    val z = cache
-    // val s = numsca.power(numsca.exp(z.chs) + 1, -1)
-    val s = numsca.sigmoid(z)
-    val dz = da * s * (s.chs + 1)
-    dz
-  }
+  def sigmoidBackward: BackwardActivationFunction =
+    (da: Tensor, cache: Tensor) => {
+      val z = cache
+      val s = numsca.sigmoid(z)
+      val dz = da * s * (-s + 1)
+      dz
+//      da * cache * (-cache + 1)
+    }
 
   def lModelForward(x: Tensor,
                     parameters: Map[String, Tensor]): (Tensor, List[Cache]) = {
@@ -75,8 +85,7 @@ object AndrewNet extends App {
 
   def crossEntropyCost(yHat: Tensor, y: Tensor): Double = {
     val m = y.shape(1)
-    val logProbs = numsca.log(yHat) * y +
-      (y.chs + 1.0) * numsca.log(yHat.chs + 1.0)
+    val logProbs = numsca.log(yHat) * y + (-y + 1.0) * numsca.log(-yHat + 1.0)
     val cost = -numsca.sum(logProbs)(0, 0) / m
     cost
   }
@@ -92,21 +101,53 @@ object AndrewNet extends App {
     val db = numsca.sum(dz, axis = 1) / m
     val daPrev = w.transpose.dot(dz)
 
-    assert(daPrev.shape sameElements aPrev.shape)
-    assert(dw.shape sameElements w.shape)
-    assert(db.shape sameElements b.shape)
+    assert(daPrev sameShape aPrev)
+    assert(dw sameShape w)
+    assert(db sameShape b)
 
     (daPrev, dw, db)
   }
 
   def linearActivationBackward(da: Tensor,
                                cache: LinearActivationCache,
-                               backwardActivation: (Tensor, Tensor) => Tensor)
+                               backwardActivation: BackwardActivationFunction)
     : (Tensor, Tensor, Tensor) = {
     val dz = backwardActivation(da, cache.activationCache)
     val (daPrev, dw, db) = linearBackward(dz, cache.linearCache)
 
     (daPrev, dw, db)
   }
+
+  def lModelBackward(
+      al: Tensor,
+      rawY: Tensor,
+      caches: List[LinearActivationCache]): Map[String, Tensor] = {
+    val numLayers = caches.size
+    val m = al.shape(1)
+    val y = rawY.reshape(al.shape)
+
+    val dal = -((y / al) - ((-y + 1) / (-al + 1)))
+
+    (1 to numLayers).reverse
+      .foldLeft(Map.empty[String, Tensor], dal) {
+        case ((grads, da), l) =>
+          val currentCache = caches(l - 1)
+          val activation =
+            if (l == numLayers) sigmoidBackward else reluBackward
+          val (daPrev, dw, db) =
+            linearActivationBackward(da, currentCache, activation)
+          val newMap = grads + (s"dA$l" -> daPrev) + (s"dW$l" -> dw) + (s"db$l" -> db)
+          (newMap, daPrev)
+      }
+      ._1
+  }
+
+  def updateParameters(parameters: Map[String, Tensor],
+                       grads: Map[String, Tensor],
+                       learningRate: Double): Map[String, Tensor] =
+    parameters.map {
+      case (k, v) =>
+        k -> { v - (grads(s"d$k") * learningRate) }
+    }
 
 }

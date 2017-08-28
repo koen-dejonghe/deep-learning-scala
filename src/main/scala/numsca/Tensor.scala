@@ -114,6 +114,8 @@ class Tensor(val array: INDArray) {
       throw new Exception(
         s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
 
+  def unary_- : Tensor = chs
+
   def apply(index: Int*): Double = array.getDouble(index: _*)
   def apply(index: Array[Int]): Double = array.getDouble(index: _*)
 
@@ -150,12 +152,11 @@ class Tensor(val array: INDArray) {
     array.put(NDArrayIndex.indexesFor(index: _*), d)
   def put(d: Double): Unit = array.linearView().data().assign(d)
 
-  def ufunc(f: (Double) => Double): Tensor = Tensor(data.map(f)).reshape(shape)
-
   def chs: Tensor = numsca.chs(this)
 
-  override def toString: String = array.toString
+  def sameShape(other: Tensor): Boolean = this.shape sameElements other.shape
 
+  override def toString: String = array.toString
 }
 
 object Tensor {
