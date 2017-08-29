@@ -15,10 +15,14 @@ trait Activation {
   def backward(da: Tensor): Tensor
 }
 
-class ReluActivation(z: Tensor) extends Activation {
-  lazy val cache: Tensor = numsca.maximum(0.0, z)
+object Activations {
+  val RELU = 0
+  val SIGMOID = 1
+}
 
-  override def forward(): Tensor = cache
+class ReluActivation(z: Tensor) extends Activation {
+
+  override def forward(): Tensor = numsca.maximum(0.0, z)
 
   override def backward(da: Tensor): Tensor =
     da * (z > 0.0)
