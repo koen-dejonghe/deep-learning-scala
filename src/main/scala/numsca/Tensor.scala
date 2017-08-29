@@ -14,107 +14,44 @@ class Tensor(val array: INDArray) {
 
   def reshape(newShape: Int*) = new Tensor(array.reshape(newShape: _*))
 
-  def data: Array[Double] = array.data().asDouble()
+  def data: Array[Double] = array.data.asDouble
 
-  def dot(other: Tensor) = new Tensor(this.array mmul other.array)
+  def dot(other: Tensor) = new Tensor(array mmul other.array)
 
-  def +(d: Double) = new Tensor(this.array add d)
+  def +(d: Double) = new Tensor(array add d)
+  def -(d: Double) = new Tensor(array sub d)
+  def *(d: Double) = new Tensor(array mul d)
+  def /(d: Double) = new Tensor(array div d)
 
-  def -(d: Double) = new Tensor(this.array sub d)
+  def +=(d: Double): Unit = array addi d
+  def -=(d: Double): Unit = array subi d
+  def *=(d: Double): Unit = array muli d
+  def /=(d: Double): Unit = array divi d
 
-  def *(d: Double) = new Tensor(this.array mul d)
+  def >(d: Double): Tensor = new Tensor(array gt d)
+  def >=(d: Double): Tensor = new Tensor(array gte d)
+  def <(d: Double): Tensor = new Tensor(array lt d)
+  def <=(d: Double): Tensor = new Tensor(array lte d)
+  def ==(d: Double): Tensor = new Tensor(array eq d)
+  def !=(d: Double): Tensor = new Tensor(array neq d)
 
-  def /(d: Double) = new Tensor(this.array div d)
+  def >(other: Tensor): Tensor = new Tensor(array gt other.array)
+  def <(other: Tensor): Tensor = new Tensor(array lt other.array)
+  def ==(other: Tensor): Tensor = new Tensor(array eq other.array)
+  def !=(other: Tensor): Tensor = new Tensor(array neq other.array)
 
-  def +=(d: Double): Unit = data.zipWithIndex.foreach {
-    case (x, i) => data(i) = x + d
-  }
+  def +(other: Tensor): Tensor = new Tensor(array add bc(other))
+  def -(other: Tensor): Tensor = new Tensor(array sub bc(other))
+  def *(other: Tensor): Tensor = new Tensor(array mul bc(other))
+  def /(other: Tensor): Tensor = new Tensor(array div bc(other))
 
-  def -=(d: Double): Unit = data.zipWithIndex.foreach {
-    case (x, i) => data(i) = x - d
-  }
-
-  def *=(d: Double): Unit = data.zipWithIndex.foreach {
-    case (x, i) => data(i) = x * d
-  }
-
-  def /=(d: Double): Unit = data.zipWithIndex.foreach {
-    case (x, i) => data(i) = x / d
-  }
-
-  def >(d: Double): Tensor = {
-    val xs = data.map(x => if (x > d) 1.0 else 0.0)
-    numsca.array(xs, this.shape)
-  }
-
-  def >=(d: Double): Tensor = {
-    val xs = data.map(x => if (x >= d) 1.0 else 0.0)
-    numsca.array(xs, this.shape)
-  }
-
-  def <(d: Double): Tensor = {
-    val xs = data.map(x => if (x < d) 1.0 else 0.0)
-    numsca.array(xs, this.shape)
-  }
-
-  def <=(d: Double): Tensor = {
-    val xs = data.map(x => if (x <= d) 1.0 else 0.0)
-    numsca.array(xs, this.shape)
-  }
-
-  def +(other: Tensor): Tensor =
-    if (this.shape sameElements other.shape)
-      new Tensor(this.array add other.array)
-    else if (other.shape sameElements Array(1, 1))
-      new Tensor(this.array add other.array)
-    else if (other.shape(0) == 1)
-      new Tensor(this.array addRowVector other.array)
-    else if (other.shape(1) == 1)
-      new Tensor(this.array addColumnVector other.array)
+  private def bc(other: Tensor): INDArray =
+    if (sameShape(other))
+      other.array
     else
-      throw new Exception(
-        s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
+      other.array.broadcast(shape: _*)
 
-  def -(other: Tensor): Tensor =
-    if (this.shape sameElements other.shape)
-      new Tensor(this.array sub other.array)
-    else if (other.shape sameElements Array(1, 1))
-      new Tensor(this.array sub other.array)
-    else if (other.shape(0) == 1)
-      new Tensor(this.array subRowVector other.array)
-    else if (other.shape(1) == 1)
-      new Tensor(this.array subColumnVector other.array)
-    else
-      throw new Exception(
-        s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
-
-  def *(other: Tensor): Tensor =
-    if (this.shape sameElements other.shape)
-      new Tensor(this.array mul other.array)
-    else if (other.shape sameElements Array(1, 1))
-      new Tensor(this.array mul other.array)
-    else if (other.shape(0) == 1)
-      new Tensor(this.array mulRowVector other.array)
-    else if (other.shape(1) == 1)
-      new Tensor(this.array mulColumnVector other.array)
-    else
-      throw new Exception(
-        s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
-
-  def /(other: Tensor): Tensor =
-    if (this.shape sameElements other.shape)
-      new Tensor(this.array div other.array)
-    else if (other.shape sameElements Array(1, 1))
-      new Tensor(this.array div other.array)
-    else if (other.shape(0) == 1)
-      new Tensor(this.array divRowVector other.array)
-    else if (other.shape(1) == 1)
-      new Tensor(this.array divColumnVector other.array)
-    else
-      throw new Exception(
-        s"incompatible shapes ${this.shape.toList} <-> ${other.shape.toList}")
-
-  def unary_- : Tensor = chs
+  def unary_- : Tensor = new Tensor(array mul -1)
 
   def apply(index: Int*): Double = array.getDouble(index: _*)
   def apply(index: Array[Int]): Double = array.getDouble(index: _*)
@@ -151,8 +88,6 @@ class Tensor(val array: INDArray) {
   def put(index: Array[Int], d: Double): Unit =
     array.put(NDArrayIndex.indexesFor(index: _*), d)
   def put(d: Double): Unit = array.linearView().data().assign(d)
-
-  def chs: Tensor = numsca.chs(this)
 
   def sameShape(other: Tensor): Boolean = this.shape sameElements other.shape
 

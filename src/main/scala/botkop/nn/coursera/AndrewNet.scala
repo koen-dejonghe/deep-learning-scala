@@ -2,28 +2,27 @@ package botkop.nn.coursera
 
 import numsca.Tensor
 
+import scala.io.Source
 import scala.language.postfixOps
 
-class Cache
-class LinearCache(val a: Tensor, val w: Tensor, val b: Tensor) extends Cache
-class LinearActivationCache(val linearCache: LinearCache,
-                            val activationCache: Tensor)
-    extends Cache
-
 object AndrewNet extends App {
+
+  class Cache
+  class LinearCache(val a: Tensor, val w: Tensor, val b: Tensor) extends Cache
+  class LinearActivationCache(val linearCache: LinearCache,
+                              val activationCache: Tensor)
+      extends Cache
 
   type ForwardActivationFunction = Tensor => (Tensor, Tensor)
   type BackwardActivationFunction = (Tensor, Tensor) => Tensor
 
-  def initializeParametersDeep(layerDims: Array[Int]): Map[String, Tensor] = {
-    for {
-      l <- 1 until layerDims.length
-      w = s"W$l" -> numsca.randn(layerDims(l), layerDims(l - 1)) * 0.01
-      b = s"b$l" -> numsca.randn(layerDims(l), 1)
-    } yield {
-      Seq(w, b)
+  def initializeParameters(layerDims: Array[Int]): Map[String, Tensor] =
+    (1 until layerDims.length).foldLeft(Map.empty[String, Tensor]) {
+      case (parameters, l) =>
+        val w = numsca.randn(layerDims(l), layerDims(l - 1)) / math.sqrt(layerDims(l-1))
+        val b = numsca.zeros(layerDims(l), 1)
+        parameters ++ Seq(s"W$l" -> w, s"b$l" -> b)
     }
-  }.flatten.toMap
 
   def linearForward(a: Tensor, w: Tensor, b: Tensor): (Tensor, LinearCache) = {
     val z = w.dot(a) + b
@@ -69,11 +68,11 @@ object AndrewNet extends App {
 //      da * cache * (-cache + 1)
     }
 
-  def lModelForward(x: Tensor,
-                    parameters: Map[String, Tensor]): (Tensor, List[Cache]) = {
+  def lModelForward(x: Tensor, parameters: Map[String, Tensor])
+    : (Tensor, List[LinearActivationCache]) = {
     val numLayers = parameters.size / 2
 
-    (1 to numLayers).foldLeft(x, List.empty[Cache]) {
+    (1 to numLayers).foldLeft(x, List.empty[LinearActivationCache]) {
       case ((aPrev, caches), l) =>
         val w = parameters(s"W$l")
         val b = parameters(s"b$l")
@@ -85,9 +84,16 @@ object AndrewNet extends App {
 
   def crossEntropyCost(yHat: Tensor, y: Tensor): Double = {
     val m = y.shape(1)
-    val logProbs = numsca.log(yHat) * y + (-y + 1.0) * numsca.log(-yHat + 1.0)
+
+    val logProbs = numsca.log(yHat) * y + (-y + 1) * numsca.log(-yHat + 1)
     val cost = -numsca.sum(logProbs)(0, 0) / m
     cost
+
+    // cost = (1./m) * (-np.dot(Y,np.log(AL).T) - np.dot(1-Y, np.log(1-AL).T))
+
+    // val cost = (-y.dot(numsca.log(yHat).transpose) - (-y + 1).dot(numsca.log(-yHat + 1).transpose)) / m
+    // cost(0,0)
+
   }
 
   def linearBackward(dz: Tensor,
@@ -121,7 +127,7 @@ object AndrewNet extends App {
   def lModelBackward(
       al: Tensor,
       rawY: Tensor,
-      caches: List[LinearActivationCache]): Map[String, Tensor] = {
+      caches: List[LinearActivationCache]): (Map[String, Tensor], Tensor) = {
     val numLayers = caches.size
     val y = rawY.reshape(al.shape)
 
@@ -136,10 +142,9 @@ object AndrewNet extends App {
             if (l == numLayers) sigmoidBackward else reluBackward
           val (daPrev, dw, db) =
             linearActivationBackward(da, currentCache, activation)
-          val newMap = grads + (s"dA$l" -> daPrev) + (s"dW$l" -> dw) + (s"db$l" -> db)
-          (newMap, daPrev)
+          val newGrads = grads + (s"dA$l" -> daPrev) + (s"dW$l" -> dw) + (s"db$l" -> db)
+          (newGrads, daPrev)
       }
-      ._1
   }
 
   def updateParameters(parameters: Map[String, Tensor],
@@ -147,7 +152,47 @@ object AndrewNet extends App {
                        learningRate: Double): Map[String, Tensor] =
     parameters.map {
       case (k, v) =>
-        k -> { v - grads(s"d$k") * learningRate }
+        k -> { v - (grads(s"d$k") * learningRate) }
     }
+
+  def lLayerModel(x: Tensor,
+                  y: Tensor,
+                  layerDims: Array[Int],
+                  learningRate: Double = 0.0075,
+                  numIterations: Int = 3000,
+                  printCost: Boolean = false): Map[String, Tensor] = {
+
+    val initialParameters = initializeParameters(layerDims)
+
+    (1 to numIterations).foldLeft(initialParameters) {
+      case (parameters, i) =>
+        val (al, caches) = lModelForward(x, parameters)
+        val cost = crossEntropyCost(al, y)
+        if (printCost && i % 100 == 0) println(s"iteration $i: cost = $cost")
+        val (grads, _) = lModelBackward(al, y, caches)
+        updateParameters(parameters, grads, learningRate)
+    }
+  }
+
+  def readData(fileName: String, shape: Array[Int]): Tensor = {
+    val data = Source
+      .fromFile(fileName)
+      .getLines()
+      .map(_.split(",").map(_.toDouble))
+      .flatten
+      .toArray
+    numsca.array(data, shape)
+  }
+
+  def predict(x: Tensor, y: Tensor, parameters: Map[String, Tensor]): Double = {
+    val m = x.shape(1)
+    val n = parameters.size / 2
+
+    val (probas, _) = lModelForward(x, parameters)
+
+    val p = probas > 0.5
+    val accuracy = numsca.sum(p == y) / m
+    accuracy(0, 0)
+  }
 
 }

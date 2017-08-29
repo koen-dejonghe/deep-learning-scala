@@ -1,7 +1,6 @@
 package coursera
 
 import botkop.nn.coursera.AndrewNet._
-import botkop.nn.coursera.{LinearActivationCache, LinearCache}
 import numsca.Tensor
 import org.nd4j.linalg.api.buffer.DataBuffer
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil
@@ -11,6 +10,19 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   override def beforeAll(): Unit = {
     DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+  }
+
+  "AndrewNet" should "initialize parameters" in {
+    val layers = Array(5, 4, 3)
+    val parameters = initializeParameters(layers)
+
+    parameters.size shouldBe 4
+
+    parameters("W1").shape shouldBe Array(4, 5)
+    parameters("b1").shape shouldBe Array(4, 1)
+    parameters("W2").shape shouldBe Array(3, 4)
+    parameters("b2").shape shouldBe Array(3, 1)
+
   }
 
   "Linear forward relu" should "activate" in {
@@ -46,9 +58,9 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val x = Tensor(1.62434536, -0.61175641, -0.52817175, -1.07296862,
       0.86540763, -2.3015387, 1.74481176, -0.7612069).reshape(4, 2)
 
-    val w1 = Tensor(0.3190391, -0.24937038, 1.46210794, -2.06014071,
-      -0.3224172, -0.38405435, 1.13376944, -1.09989127, -0.17242821,
-      -0.87785842, 0.04221375, 0.58281521).reshape(3, 4)
+    val w1 = Tensor(0.3190391, -0.24937038, 1.46210794, -2.06014071, -0.3224172,
+      -0.38405435, 1.13376944, -1.09989127, -0.17242821, -0.87785842,
+      0.04221375, 0.58281521).reshape(3, 4)
 
     val b1 = Tensor(-1.10061918, 1.14472371, 0.90159072).reshape(3, 1)
 
@@ -103,8 +115,8 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   it should "calculate the linear relu activation backward" in {
     val al = Tensor(-0.41675785, -0.05626683).reshape(1, 2)
 
-    val a = Tensor(-2.1361961, 1.64027081, -1.79343559, -0.84174737,
-      0.50288142, -1.24528809).reshape(3, 2)
+    val a = Tensor(-2.1361961, 1.64027081, -1.79343559, -0.84174737, 0.50288142,
+      -1.24528809).reshape(3, 2)
     val w = Tensor(-1.05795222, -0.90900761, 0.55145404).reshape(1, 3)
     val b = Tensor(2.29220801)
     val linearCache = new LinearCache(a, w, b)
@@ -126,8 +138,8 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   it should "calculate the linear sigmoid activation backward" in {
     val al = Tensor(-0.41675785, -0.05626683).reshape(1, 2)
 
-    val a = Tensor(-2.1361961, 1.64027081, -1.79343559, -0.84174737,
-      0.50288142, -1.24528809).reshape(3, 2)
+    val a = Tensor(-2.1361961, 1.64027081, -1.79343559, -0.84174737, 0.50288142,
+      -1.24528809).reshape(3, 2)
     val w = Tensor(-1.05795222, -0.90900761, 0.55145404).reshape(1, 3)
     val b = Tensor(2.29220801)
     val linearCache = new LinearCache(a, w, b)
@@ -152,13 +164,12 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val yAssess = Tensor(1, 0).reshape(1, 2)
 
     val a0 = Tensor(
-      0.09649747, -1.8634927, -0.2773882, -0.35475898, -0.08274148,
-      -0.62700068, -0.04381817, -0.47721803
+      0.09649747, -1.8634927, -0.2773882, -0.35475898, -0.08274148, -0.62700068,
+      -0.04381817, -0.47721803
     ).reshape(4, 2)
     val w0 = Tensor(
       -1.31386475, 0.88462238, 0.88131804, 1.70957306, 0.05003364, -0.40467741,
-      -0.54535995, -1.54647732, 0.98236743, -1.10106763, -1.18504653,
-      -0.2056499
+      -0.54535995, -1.54647732, 0.98236743, -1.10106763, -1.18504653, -0.2056499
     ).reshape(3, 4)
     val b0 = Tensor(1.48614836, 0.23671627, -1.02378514).reshape(3, 1)
     val linearCache0 = new LinearCache(a0, w0, b0)
@@ -178,14 +189,14 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val caches = List(linearActivationCache0, linearActivationCache1)
 
-    val grads = lModelBackward(al, yAssess, caches)
+    val (grads, _) = lModelBackward(al, yAssess, caches)
 
     println(grads)
 
     val da1 = Tensor(0, 0.52257901, 0, -0.3269206, 0, -0.32070404, 0,
       -0.74079187).reshape(4, 2)
-    val dw1 = Tensor(0.41010002, 0.07807203, 0.13798444, 0.10502167, 0, 0, 0,
-      0, 0.05283652, 0.01005865, 0.01777766, 0.0135308).reshape(3, 4)
+    val dw1 = Tensor(0.41010002, 0.07807203, 0.13798444, 0.10502167, 0, 0, 0, 0,
+      0.05283652, 0.01005865, 0.01777766, 0.0135308).reshape(3, 4)
     val db1 = Tensor(-0.22007063, 0, -0.02835349).reshape(3, 1)
 
     val da2 = Tensor(0.12913162, -0.44014127, -0.14175655, 0.48317296,
@@ -216,9 +227,9 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val parameters = Map("W1" -> w1, "b1" -> b1, "W2" -> w2, "b2" -> b2)
 
-    val dw1 = Tensor(1.78862847, 0.43650985, 0.09649747, -1.8634927,
-      -0.2773882, -0.35475898, -0.08274148, -0.62700068, -0.04381817,
-      -0.47721803, -1.31386475, 0.88462238)
+    val dw1 = Tensor(1.78862847, 0.43650985, 0.09649747, -1.8634927, -0.2773882,
+      -0.35475898, -0.08274148, -0.62700068, -0.04381817, -0.47721803,
+      -1.31386475, 0.88462238)
       .reshape(4, 3)
     val db1 = Tensor(0.88131804, 1.70957306, 0.05003364).reshape(3, 1)
 
@@ -237,14 +248,41 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       .reshape(w1.shape)
     val b1Expected = Tensor(-0.04659241, -1.28888275, 0.53405496)
       .reshape(b1.shape)
-    val w2Expected = Tensor(-0.55569196, 0.0354055, 1.32964895).reshape(w2.shape)
+    val w2Expected =
+      Tensor(-0.55569196, 0.0354055, 1.32964895).reshape(w2.shape)
     val b2Expected = Tensor(-0.84610769)
 
     approxSameContents(updatedParameters("W1"), w1Expected, 1e-7) shouldBe true
     approxSameContents(updatedParameters("b1"), b1Expected, 1e-7) shouldBe true
     approxSameContents(updatedParameters("W2"), w2Expected, 1e-7) shouldBe true
     approxSameContents(updatedParameters("b2"), b2Expected, 1e-7) shouldBe true
+  }
 
+  it should "train" in {
+
+    numsca.rand.setSeed(231)
+
+    val xTrain = readData("data/train_x.csv", Array(12288, 209))
+    val yTrain = readData("data/train_y.csv", Array(1, 209))
+    val xTest = readData("data/test_x.csv", Array(12288, 50))
+    val yTest = readData("data/test_y.csv", Array(1, 50))
+
+    val layerDims = Array(12288, 20, 7, 5, 1)
+
+    val parameters = lLayerModel(xTrain,
+                                 yTrain,
+                                 layerDims,
+                                 numIterations = 2500,
+                                 printCost = true)
+
+    val predTrain = predict(xTrain, yTrain, parameters)
+    println(s"training accuracy = $predTrain")
+
+    val predTest = predict(xTest, yTest, parameters)
+    println(s"test accuracy = $predTest")
+
+    predTrain should be > 0.9
+    predTest should be >= 0.7
   }
 
   def approxSameContents(t1: Tensor,

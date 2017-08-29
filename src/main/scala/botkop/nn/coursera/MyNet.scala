@@ -4,12 +4,6 @@ import numsca.Tensor
 
 import scala.language.postfixOps
 
-class Cache
-class LinearCache(val a: Tensor, val w: Tensor, val b: Tensor) extends Cache
-class LinearActivationCache(val linearCache: LinearCache,
-                            val activationCache: Tensor)
-    extends Cache
-
 trait Activation {
   def forward(): Tensor
   def backward(da: Tensor): Tensor
@@ -38,6 +32,12 @@ class SigmoidActivation(z: Tensor) extends Activation {
 }
 
 object MyNet extends App {
+
+  class Cache
+  class LinearCache(val a: Tensor, val w: Tensor, val b: Tensor) extends Cache
+  class LinearActivationCache(val linearCache: LinearCache,
+                              val activationCache: Tensor)
+      extends Cache
 
   type ForwardActivationFunction = Tensor => (Tensor, Tensor)
   type BackwardActivationFunction = (Tensor, Tensor) => Tensor

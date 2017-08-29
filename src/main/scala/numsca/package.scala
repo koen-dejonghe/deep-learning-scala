@@ -1,3 +1,4 @@
+import org.nd4j.linalg.api.rng
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.ops.transforms.Transforms
 
@@ -8,7 +9,8 @@ package object numsca {
   def array(data: Array[Double], shape: Array[Int]) =
     new Tensor(Nd4j.create(data, shape))
 
-  def create(data: Array[Double], shape: Int*): Tensor = array(data, shape.toArray)
+  def create(data: Array[Double], shape: Int*): Tensor =
+    array(data, shape.toArray)
 
   def zeros(shape: Array[Int]) = new Tensor(Nd4j.zeros(shape: _*))
 
@@ -19,6 +21,8 @@ package object numsca {
   def ones(shape: Array[Int]) = new Tensor(Nd4j.ones(shape: _*))
 
   def ones(shape: Int*) = new Tensor(Nd4j.ones(shape: _*))
+
+  def rand: rng.Random = Nd4j.getRandom
 
   def randn(shape: Array[Int]) = new Tensor(Nd4j.randn(shape))
 
@@ -55,9 +59,12 @@ package object numsca {
   def arange(start: Double, end: Double) = new Tensor(Nd4j.arange(start, end))
 
   def sigmoid(t: Tensor): Tensor = new Tensor(Transforms.sigmoid(t.array))
+  def relu(t: Tensor): Tensor = new Tensor(Transforms.relu(t.array))
+  def tanh(t: Tensor): Tensor = new Tensor(Transforms.tanh(t.array))
   def log(t: Tensor): Tensor = new Tensor(Transforms.log(t.array))
-  def chs(t: Tensor): Tensor = t * -1.0
-  def power(t: Tensor, power: Double) = new Tensor(Transforms.pow(t.array, power))
+  def power(t: Tensor, power: Double) =
+    new Tensor(Transforms.pow(t.array, power))
   def exp(t: Tensor): Tensor = new Tensor(Transforms.exp(t.array))
+  def sqrt(t: Tensor): Tensor = new Tensor(Transforms.sqrt(t.array))
 
 }
