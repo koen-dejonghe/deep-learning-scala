@@ -9,6 +9,7 @@ class LayerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   override def beforeAll(): Unit ={
     DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+    numsca.rand.setSeed(231)
   }
 
   "A Layer" should "correctly compute the affine forward pass" in {
