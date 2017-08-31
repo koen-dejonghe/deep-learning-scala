@@ -20,6 +20,7 @@ object AndrewNet extends App {
     (1 until layerDims.length).foldLeft(Map.empty[String, Tensor]) {
       case (parameters, l) =>
         val w = numsca.randn(layerDims(l), layerDims(l - 1)) / math.sqrt(layerDims(l-1))
+        // val w = numsca.randn(layerDims(l), layerDims(l - 1)) * math.sqrt(2.0 / layerDims(l-1))
         val b = numsca.zeros(layerDims(l), 1)
         parameters ++ Seq(s"W$l" -> w, s"b$l" -> b)
     }
