@@ -18,15 +18,18 @@ class Tensor(val array: INDArray) {
 
   def dot(other: Tensor) = new Tensor(array mmul other.array)
 
+  def unary_- : Tensor = new Tensor(array mul -1)
   def +(d: Double) = new Tensor(array add d)
   def -(d: Double) = new Tensor(array sub d)
   def *(d: Double) = new Tensor(array mul d)
   def /(d: Double) = new Tensor(array div d)
+  def %(d: Double) = new Tensor(array fmod d)
 
   def +=(d: Double): Unit = array addi d
   def -=(d: Double): Unit = array subi d
   def *=(d: Double): Unit = array muli d
   def /=(d: Double): Unit = array divi d
+  def %=(d: Double): Unit = array fmodi d
 
   def >(d: Double): Tensor = new Tensor(array gt d)
   def >=(d: Double): Tensor = new Tensor(array gte d)
@@ -35,15 +38,23 @@ class Tensor(val array: INDArray) {
   def ==(d: Double): Tensor = new Tensor(array eq d)
   def !=(d: Double): Tensor = new Tensor(array neq d)
 
-  def >(other: Tensor): Tensor = new Tensor(array gt other.array)
-  def <(other: Tensor): Tensor = new Tensor(array lt other.array)
-  def ==(other: Tensor): Tensor = new Tensor(array eq other.array)
-  def !=(other: Tensor): Tensor = new Tensor(array neq other.array)
-
   def +(other: Tensor): Tensor = new Tensor(array add bc(other))
   def -(other: Tensor): Tensor = new Tensor(array sub bc(other))
   def *(other: Tensor): Tensor = new Tensor(array mul bc(other))
   def /(other: Tensor): Tensor = new Tensor(array div bc(other))
+  def %(other: Tensor): Tensor = new Tensor(array fmod bc(other))
+
+  def +=(t: Tensor): Unit = array addi bc(t)
+  def -=(t: Tensor): Unit = array subi bc(t)
+  def *=(t: Tensor): Unit = array muli bc(t)
+  def /=(t: Tensor): Unit = array divi bc(t)
+  def %=(t: Tensor): Unit = array fmodi bc(t)
+
+  def >(other: Tensor): Tensor = new Tensor(array gt bc(other))
+  def <(other: Tensor): Tensor = new Tensor(array lt bc(other))
+  def ==(other: Tensor): Tensor = new Tensor(array eq bc(other))
+  def !=(other: Tensor): Tensor = new Tensor(array neq bc(other))
+
 
   private def bc(other: Tensor): INDArray =
     if (sameShape(other))
@@ -51,7 +62,11 @@ class Tensor(val array: INDArray) {
     else
       other.array.broadcast(shape: _*)
 
-  def unary_- : Tensor = new Tensor(array mul -1)
+  def squeeze(): Double = {
+    require(shape sameElements Array(1,1))
+    array.getDouble(0, 0)
+  }
+
 
   def apply(index: Int*): Double = array.getDouble(index: _*)
   def apply(index: Array[Int]): Double = array.getDouble(index: _*)

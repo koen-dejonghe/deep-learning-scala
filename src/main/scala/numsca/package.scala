@@ -35,16 +35,8 @@ package object numsca {
 
   def randint(low: Int, shape: Int*): Tensor = randint(low, shape.toArray)
 
-  def linspace(lower: Double, upper: Double, shape: Array[Int]): Tensor = {
-    val array = Nd4j.linspace(lower, upper, shape.product)
-    if (shape.length > 1)
-      new Tensor(array.reshape(shape: _*))
-    else
-      new Tensor(array)
-  }
-
-  def linspace(lower: Double, upper: Double, shape: Int*): Tensor =
-    linspace(lower, upper, shape.toArray)
+  def linspace(lower: Double, upper: Double, num: Int) =
+    new Tensor(Nd4j.linspace(lower, upper, num))
 
   def abs(t: Tensor) = new Tensor(Transforms.abs(t.array))
 

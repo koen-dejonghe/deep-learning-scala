@@ -6,6 +6,8 @@ import org.nd4j.linalg.api.buffer.DataBuffer
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
+import scala.io.Source
+
 class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   override def beforeAll(): Unit = {
@@ -34,7 +36,6 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val (a, _) = linearActivationForward(aPrev, w, b, reluForward)
 
     a.shape shouldBe Array(1, 2)
-    println(a(0, 0))
     a(0, 0) shouldBe 3.4389 +- 0.0001
     a(0, 1) shouldBe 0.0
   }
@@ -48,7 +49,6 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val (a, _) = linearActivationForward(aPrev, w, b, sigmoidForward)
 
     a.shape shouldBe Array(1, 2)
-    println(a(0, 0))
     a(0, 0) shouldBe 0.9689 +- 0.0001
     a(0, 1) shouldBe 0.1101 +- 0.0001
   }
@@ -143,7 +143,8 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val w = Tensor(-1.05795222, -0.90900761, 0.55145404).reshape(1, 3)
     val b = Tensor(2.29220801)
     val linearCache = new LinearCache(a, w, b)
-    val activationCache = Tensor(0.04153939, -1.11792545).reshape(1, 2)
+    // val activationCache = Tensor(0.04153939, -1.11792545).reshape(1, 2)
+    val activationCache = numsca.sigmoid(Tensor(0.04153939, -1.11792545).reshape(1, 2))
     val cache = new LinearActivationCache(linearCache, activationCache)
 
     val (daPrev, dw, db) = linearActivationBackward(al, cache, sigmoidBackward)
@@ -183,7 +184,8 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val w1 = Tensor(-1.02387576, 1.12397796, -0.13191423).reshape(1, 3)
     val b1 = Tensor(-1.62328545)
     val linearCache1 = new LinearCache(a1, w1, b1)
-    val activationCache1 = Tensor(0.64667545, -0.35627076).reshape(1, 2)
+    // val activationCache1 = Tensor(0.64667545, -0.35627076).reshape(1, 2)
+    val activationCache1 = numsca.sigmoid(Tensor(0.64667545, -0.35627076).reshape(1, 2))
     val linearActivationCache1 =
       new LinearActivationCache(linearCache1, activationCache1)
 
@@ -191,7 +193,7 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val (grads, _) = lModelBackward(al, yAssess, caches)
 
-    println(grads)
+    // println(grads)
 
     val da1 = Tensor(0, 0.52257901, 0, -0.3269206, 0, -0.32070404, 0,
       -0.74079187).reshape(4, 2)
@@ -297,5 +299,15 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
         case (d1, d2) => math.abs(d2 - d1) > deviation
       }
     }
+
+  def readData(fileName: String, shape: Array[Int]): Tensor = {
+    val data = Source
+      .fromFile(fileName)
+      .getLines()
+      .map(_.split(",").map(_.toDouble))
+      .flatten
+      .toArray
+    numsca.array(data, shape)
+  }
 
 }

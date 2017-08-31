@@ -18,8 +18,12 @@ class LayerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val inputShape = Array(4, 5, 6)
     val outputDim = 3
 
-    val x = linspace(-0.1, 0.5, numInputs +: inputShape)
-    val w = linspace(-0.2, 0.3, inputShape.product, outputDim)
+    val inputSize = numInputs * inputShape.product
+    val weightSize = outputDim * inputShape.product
+
+    val x = linspace(-0.1, 0.5, inputSize).reshape(numInputs +: inputShape)
+
+    val w = linspace(-0.2, 0.3, weightSize).reshape(inputShape.product, outputDim)
     val b = linspace(-0.3, 0.1, outputDim)
 
     val out = Layers.affineForward(x, w, b)._1
@@ -95,17 +99,14 @@ class LayerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val numInputs = 50
 
     val x = randn(numInputs, numClasses) * 0.001
+
     val y = randint(numClasses, numInputs)
-
-    def fdx(a: Tensor) = Layers.svmLoss(x, y)._1
-    val dxNum = evalNumericalGradient(fdx, x)
-
-    val result = Layers.svmLoss(x, y)
-    val loss = result._1
-    val dx = result._2
+    val (loss, dx) = Layers.svmLoss(x, y)
 
     loss should equal (9.0 +- 0.2)
 
+    def fdx(a: Tensor) = Layers.svmLoss(x, y)._1
+    val dxNum = evalNumericalGradient(fdx, x)
     val dxError = relError(dx, dxNum)
     dxError should be < 1.5e-9
   }

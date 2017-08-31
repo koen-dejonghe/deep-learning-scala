@@ -44,15 +44,20 @@ object Layers {
 
   def svmLoss(x: Tensor, y: Tensor): (Double, Tensor) = {
     val n = x.shape(0)
-    val correctClassScores = x(arange(n))(y)
+
+    // val correctClassScores = x(arange(n))(y)
+    val correctClassScores = x(y)
+    // println(correctClassScores.shape.toList)
+
     val margins = maximum(0.0, x - correctClassScores + 1.0)
-    margins(arange(n))(y).put(0.0)
+    // margins(arange(n))(y).put(0.0)
+    margins(y).put(0.0)
     val loss = sum(margins)(0) / n
 
     val numPos = sum(margins > 0, axis=1)(0)
-    val dx = zerosLike(x)
-    dx(margins > 0).put(1.0)
-    dx(arange(n))(y) -= numPos
+    val dx = margins > 0
+    // dx(arange(n))(y) -= numPos
+    dx(y) -= numPos
     dx /= n
 
     (loss, dx)
