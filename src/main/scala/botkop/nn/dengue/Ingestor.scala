@@ -195,7 +195,7 @@ object Ingestor extends App {
   val pars = model(normalized,
                    y,
                    layerDims,
-                   learningRate = 1e-4,
+                   learningRate = 1e-8,
                    numIterations = 10000,
                    printCost = true)
 
@@ -216,8 +216,8 @@ object Ingestor extends App {
     (1 to numIterations).foldLeft(initialParameters) {
       case (parameters, i) =>
         val (al, caches) = modelForward(x, parameters)
-        // val cost = crossEntropyCost(al, y)
-        val cost = rmse(al, y)
+        val cost = crossEntropyCost(al, y)
+        // val cost = rmse(al, y)
         if (printCost && i % 100 == 0) {
           println(s"iteration $i: cost = $cost")
           println(al)
@@ -247,7 +247,7 @@ object Ingestor extends App {
       case ((aPrev, caches), l) =>
         val w = parameters(s"W$l")
         val b = parameters(s"b$l")
-        val activation = if (l == numLayers) identityForward else reluForward
+        val activation = if (l == numLayers) sigmoidForward else reluForward
         // val activation = reluForward
         val (a, cache) = linearActivationForward(aPrev, w, b, activation)
         (a, caches :+ cache)
@@ -263,6 +263,12 @@ object Ingestor extends App {
 
     // derivative of cost with respect to AL
     val dal = -(y / al - (-y + 1) / (-al + 1))
+    // note: this is dout, the derivative of the loss function with respect to al
+
+    // println("wwwwwwwwwwwwwwwwwwwwwwwwwwwwww")
+    // println(y.shape.toList)
+    // println(dal.shape.toList)
+    assert(dal sameShape y)
 
     (1 to numLayers).reverse
       .foldLeft(Map.empty[String, Tensor], dal) {
@@ -270,7 +276,7 @@ object Ingestor extends App {
           val currentCache = caches(l - 1)
           val activation =
             // reluBackward
-            if (l == numLayers) identityBackward else reluBackward
+            if (l == numLayers) sigmoidBackward else reluBackward
           val (daPrev, dw, db) =
             linearActivationBackward(da, currentCache, activation)
           val newGrads = grads + (s"dA$l" -> daPrev) + (s"dW$l" -> dw) + (s"db$l" -> db)
@@ -308,8 +314,8 @@ object Ingestor extends App {
     (1 until layerDims.length).foldLeft(Map.empty[String, Tensor]) {
       case (parameters, l) =>
         // val w = numsca.randn(layerDims(l), layerDims(l - 1)) / math.sqrt(layerDims(l-1))
-        val w = numsca.randn(layerDims(l), layerDims(l - 1)) * math.sqrt(2.0 / layerDims(l-1))
-        // val w = numsca.randn(layerDims(l), layerDims(l - 1)) * 0.01
+        // val w = numsca.randn(layerDims(l), layerDims(l - 1)) * math.sqrt(2.0 / layerDims(l-1))
+        val w = numsca.randn(layerDims(l), layerDims(l - 1)) * 0.01
         val b = numsca.zeros(layerDims(l), 1)
         parameters ++ Seq(s"W$l" -> w, s"b$l" -> b)
     }
