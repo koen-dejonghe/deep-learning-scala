@@ -144,7 +144,8 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val b = Tensor(2.29220801)
     val linearCache = new LinearCache(a, w, b)
     // val activationCache = Tensor(0.04153939, -1.11792545).reshape(1, 2)
-    val activationCache = numsca.sigmoid(Tensor(0.04153939, -1.11792545).reshape(1, 2))
+    val activationCache =
+      numsca.sigmoid(Tensor(0.04153939, -1.11792545).reshape(1, 2))
     val cache = new LinearActivationCache(linearCache, activationCache)
 
     val (daPrev, dw, db) = linearActivationBackward(al, cache, sigmoidBackward)
@@ -185,7 +186,8 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val b1 = Tensor(-1.62328545)
     val linearCache1 = new LinearCache(a1, w1, b1)
     // val activationCache1 = Tensor(0.64667545, -0.35627076).reshape(1, 2)
-    val activationCache1 = numsca.sigmoid(Tensor(0.64667545, -0.35627076).reshape(1, 2))
+    val activationCache1 =
+      numsca.sigmoid(Tensor(0.64667545, -0.35627076).reshape(1, 2))
     val linearActivationCache1 =
       new LinearActivationCache(linearCache1, activationCache1)
 

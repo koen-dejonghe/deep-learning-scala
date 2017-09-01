@@ -1,3 +1,4 @@
+import org.nd4j.linalg.api.ops.impl.indexaccum.IAMax
 import org.nd4j.linalg.api.rng
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.ops.transforms.Transforms
@@ -59,4 +60,10 @@ package object numsca {
   def exp(t: Tensor): Tensor = new Tensor(Transforms.exp(t.array))
   def sqrt(t: Tensor): Tensor = new Tensor(Transforms.sqrt(t.array))
 
+  def argmax(t: Tensor, axis: Int = 0): Tensor =
+    new Tensor(Nd4j.getExecutioner.exec(new IAMax(t.array), axis))
+
+  def round(t: Tensor): Tensor = new Tensor(Transforms.round(t.array))
+  def ceil(t: Tensor): Tensor = new Tensor(Transforms.ceil(t.array))
+  def floor(t: Tensor): Tensor = new Tensor(Transforms.floor(t.array))
 }
