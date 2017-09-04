@@ -1,6 +1,5 @@
 package numsca
 
-import org.nd4j.linalg.api.ndarray.INDArray
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
 class TensorSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
@@ -18,16 +17,14 @@ class TensorSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   it should "evaluate gt" in {
     val t1 = numsca.zeros(2, 2)
-    // val t2 = numsca.linspace(1.0, 4.0, Array(2, 2))
     val t2 = numsca.linspace(1.0, 4.0, 4).reshape(Array(2, 2))
 
     val c = t2 > 2
-    println(c)
 
     val expected = Tensor(0, 0, 1, 1).reshape(2, 2)
 
     assert (
-      c.array.dup().data().asDouble() sameElements expected.array.dup().data().asInt())
+      c sameElements expected)
   }
 
   it should "broadcast addition" in {
@@ -38,21 +35,5 @@ class TensorSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     println(t3.data)
   }
-
-  it should "slice" in {
-    val a = arange(15).reshape(5, 3).array
-    println(a)
-    println()
-    println(a.slice(2).slice(0))
-    println()
-    println(a.slices())
-
-    val i = Tensor(0.0, 1.0, 0.0, 2.0, 1.0).reshape(1, 5)
-    println(i)
-
-
-  }
-
-
 
 }

@@ -1,20 +1,21 @@
-package coursera
+package coursera.deeplearning.course1.week4
 
-import botkop.nn.coursera.AndrewNet._
+import coursera.deeplearning.course1.week4.LLayeredNet._
 import numsca.Tensor
 import org.nd4j.linalg.api.buffer.DataBuffer
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
 import scala.io.Source
 
-class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
+class LLayeredNetSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
 
-  override def beforeAll(): Unit = {
+  override def beforeEach(): Unit = {
     DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+    numsca.rand.setSeed(231)
   }
 
-  "AndrewNet" should "initialize parameters" in {
+  "An L layered neural net" should "initialize parameters" in {
     val layers = Array(5, 4, 3)
     val parameters = initializeParameters(layers)
 
@@ -24,10 +25,9 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     parameters("b1").shape shouldBe Array(4, 1)
     parameters("W2").shape shouldBe Array(3, 4)
     parameters("b2").shape shouldBe Array(3, 1)
-
   }
 
-  "Linear forward relu" should "activate" in {
+  it should "activate a linear relu forward layer" in {
     val aPrev = Tensor(-0.41675785, -0.05626683, -2.1361961, 1.64027081,
       -1.79343559, -0.84174737).reshape(3, 2)
     val w = Tensor(0.50288142, -1.24528809, -1.05795222).reshape(1, 3)
@@ -40,7 +40,7 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     a(0, 1) shouldBe 0.0
   }
 
-  "Linear forward sigmoid" should "activate" in {
+  it should "activate a linear sigmoid forward layer" in {
     val aPrev = Tensor(-0.41675785, -0.05626683, -2.1361961, 1.64027081,
       -1.79343559, -0.84174737).reshape(3, 2)
     val w = Tensor(0.50288142, -1.24528809, -1.05795222).reshape(1, 3)
@@ -53,7 +53,7 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     a(0, 1) shouldBe 0.1101 +- 0.0001
   }
 
-  "L model forward" should "activate" in {
+  it should "forward propagate an l layered model" in {
 
     val x = Tensor(1.62434536, -0.61175641, -0.52817175, -1.07296862,
       0.86540763, -2.3015387, 1.74481176, -0.7612069).reshape(4, 2)
@@ -91,7 +91,7 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     cost shouldBe 0.414931599615 +- 1e-8
   }
 
-  it should "calculate linear backward" in {
+  it should "backprop a linear layer" in {
     val dz = Tensor(1.62434536, -0.61175641).reshape(1, 2)
 
     val aPrev = Tensor(-0.52817175, -1.07296862, 0.86540763, -2.3015387,
@@ -264,12 +264,10 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   it should "train" in {
 
-    numsca.rand.setSeed(231)
-
-    val xTrain = readData("data/train_x.csv", Array(12288, 209))
-    val yTrain = readData("data/train_y.csv", Array(1, 209))
-    val xTest = readData("data/test_x.csv", Array(12288, 50))
-    val yTest = readData("data/test_y.csv", Array(1, 50))
+    val xTrain = readData("data/coursera/catvsnoncat/train_x.csv", Array(12288, 209))
+    val yTrain = readData("data/coursera/catvsnoncat/train_y.csv", Array(1, 209))
+    val xTest = readData("data/coursera/catvsnoncat/test_x.csv", Array(12288, 50))
+    val yTest = readData("data/coursera/catvsnoncat/test_y.csv", Array(1, 50))
 
     val layerDims = Array(12288, 20, 7, 5, 1)
 
@@ -309,7 +307,7 @@ class AndrewNetSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       .map(_.split(",").map(_.toDouble))
       .flatten
       .toArray
-    numsca.array(data, shape)
+    Tensor(data).reshape(shape)
   }
 
 }

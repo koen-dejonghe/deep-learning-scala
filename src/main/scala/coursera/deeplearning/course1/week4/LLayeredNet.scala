@@ -1,15 +1,10 @@
-package botkop.nn.coursera
+package coursera.deeplearning.course1.week4
 
-import botkop.nn.coursera.AndrewNet.{BackwardActivationFunction, ForwardActivationFunction}
-import botkop.nn.coursera.activations.{Activation, Relu, Sigmoid}
 import numsca.Tensor
-import org.nd4j.linalg.api.ops.impl.indexaccum.IAMax
-import org.nd4j.linalg.factory.Nd4j
-import org.nd4j.linalg.ops.transforms.Transforms
 
 import scala.language.postfixOps
 
-object MyNet extends App {
+object LLayeredNet {
 
   class Cache
   class LinearCache(val a: Tensor, val w: Tensor, val b: Tensor) extends Cache
@@ -17,67 +12,11 @@ object MyNet extends App {
                               val activationCache: Tensor)
       extends Cache
 
-  type CostFunction = (Tensor, Tensor) => (Double, Tensor)
-
-  def crossEntropyCost: CostFunction = (yHat: Tensor, y: Tensor) => {
-    assert(
-      yHat sameShape y,
-      "y and yHat must have same shape (use one-hot encoding if necessary)")
-
-    val m = y.shape(1)
-    val logProbs = (y * numsca.log(yHat)) + ((-y + 1) * numsca.log(-yHat + 1))
-    val cost = -numsca.sum(logProbs).squeeze() / m
-    val dout = -(y / yHat - (-y + 1) / (-yHat + 1))
-
-    (cost, dout)
-  }
-
-  def svmLoss: CostFunction = (x: Tensor, y: Tensor) => {
-
-    val n = x.shape(0).toDouble
-    val xData = x.array.dup.data.asDouble
-    val yData = y.array.dup.data.asInt
-
-    val xRows = xData.grouped(x.shape(1))
-
-    val margins = xRows
-      .zip(yData.iterator)
-      .map {
-        case (row, correctIndex) =>
-          val correctScore = row(correctIndex)
-          row.zipWithIndex.map {
-            case (d, i) =>
-              if (i == correctIndex)
-                0.0
-              else
-                Math.max(0.0, d - correctScore + 1.0)
-          }
-      }
-      .toArray
-
-    val loss = margins.flatten.sum / n
-
-    val numPos = margins.map { row =>
-      row.count(_ > 0.0)
-    }
-
-    val dxData = margins.zipWithIndex.map {
-      case (row, rowId) =>
-        val correctIdx = yData(rowId)
-        val np = numPos(rowId)
-        val dRow: Array[Double] = row.map { d =>
-          if (d > 0.0) 1.0 else 0.0
-        }
-        dRow(correctIdx) -= np
-        dRow.map(_ / n)
-    }
-
-    val dx = Nd4j.create(dxData).reshape(x.shape: _*)
-    (loss, new Tensor(dx))
-  }
+  type ForwardActivationFunction = Tensor => (Tensor, Tensor)
+  type BackwardActivationFunction = (Tensor, Tensor) => Tensor
 
   /**
-  Arguments:
+    Arguments:
     layer_dims -- python array (list) containing the dimensions of each layer in our network
 
     Returns:
@@ -88,15 +27,14 @@ object MyNet extends App {
   def initializeParameters(layerDims: Array[Int]): Map[String, Tensor] =
     (1 until layerDims.length).foldLeft(Map.empty[String, Tensor]) {
       case (parameters, l) =>
-        // val w = numsca.randn(layerDims(l), layerDims(l - 1)) / math.sqrt(layerDims(l-1))
-        val w = numsca.randn(layerDims(l), layerDims(l - 1)) * math.sqrt(
-          2.0 / layerDims(l - 1))
+        val w = numsca.randn(layerDims(l), layerDims(l - 1)) / math.sqrt(layerDims(l-1))
+        // val w = numsca.randn(layerDims(l), layerDims(l - 1)) * math.sqrt(2.0 / layerDims(l-1))
         val b = numsca.zeros(layerDims(l), 1)
         parameters ++ Seq(s"W$l" -> w, s"b$l" -> b)
     }
 
   /**
-  Implement the linear part of a layer's forward propagation.
+    Implement the linear part of a layer's forward propagation.
 
     Arguments:
     A -- activations from previous layer (or input data): (size of previous layer, number of examples)
@@ -115,7 +53,7 @@ object MyNet extends App {
   }
 
   /**
-  Implement the forward propagation for the LINEAR->ACTIVATION layer
+    Implement the forward propagation for the LINEAR->ACTIVATION layer
 
     Arguments:
     A_prev -- activations from previous layer (or input data): (size of previous layer, number of examples)
@@ -140,7 +78,80 @@ object MyNet extends App {
   }
 
   /**
-  Implement forward propagation for the [LINEAR->RELU]*(L-1)->LINEAR->SIGMOID computation
+    Implement the RELU function.
+
+    Arguments:
+    Z -- Output of the linear layer, of any shape
+
+    Returns:
+    A -- Post-activation parameter, of the same shape as Z
+    cache -- a python dictionary containing "A" ; stored for computing the backward pass efficiently
+
+    */
+  def reluForward: ForwardActivationFunction = (z: Tensor) => {
+    val a = numsca.maximum(0.0, z)
+    (a, z)
+  }
+
+  /**
+    Implement the backward propagation for a single RELU unit.
+
+    Arguments:
+    dA -- post-activation gradient, of any shape
+    cache -- 'Z' where we store for computing backward propagation efficiently
+
+    Returns:
+    dZ -- Gradient of the cost with respect to Z
+    */
+  def reluBackward: BackwardActivationFunction =
+    (da: Tensor, cache: Tensor) => {
+      da * (cache > 0.0)
+    }
+
+  /**
+    Implements the sigmoid activation in numpy
+
+    Arguments:
+    Z -- numpy array of any shape
+
+    Returns:
+    A -- output of sigmoid(z), same shape as Z
+    cache -- returns Z as well, useful during backpropagation
+    */
+  def sigmoidForward: ForwardActivationFunction =
+    (z: Tensor) => {
+      // small optimization compared to course: return the sigmoid as the cache,
+      // since we can use it again in the back prop
+      // this is the local derivative in Karpathy speak
+      // (numsca.sigmoid(z), z)
+      val s = numsca.sigmoid(z)
+      (s, s)
+    }
+
+  /**
+    Implement the backward propagation for a single SIGMOID unit.
+
+    Arguments:
+    dA -- post-activation gradient, of any shape
+    cache -- 'Z' where we store for computing backward propagation efficiently
+
+    Returns:
+    dZ -- Gradient of the cost with respect to Z
+
+    */
+  def sigmoidBackward: BackwardActivationFunction =
+    (da: Tensor, cache: Tensor) => {
+      /*
+      val z = cache
+      val s = numsca.sigmoid(z)
+      val dz = da * s * (-s + 1)
+      dz
+       */
+      da * cache * (-cache + 1)
+    }
+
+  /**
+    Implement forward propagation for the [LINEAR->RELU]*(L-1)->LINEAR->SIGMOID computation
 
     Arguments:
     X -- data, numpy array of shape (input size, number of examples)
@@ -152,25 +163,45 @@ object MyNet extends App {
                 every cache of linear_relu_forward() (there are L-1 of them, indexed from 0 to L-2)
                 the cache of linear_sigmoid_forward() (there is one, indexed L-1)
     */
-  def lModelForward(
-      x: Tensor,
-      parameters: Map[String, Tensor],
-      activations: List[Activation]): (Tensor, List[LinearActivationCache]) = {
+  def lModelForward(x: Tensor, parameters: Map[String, Tensor])
+    : (Tensor, List[LinearActivationCache]) = {
     val numLayers = parameters.size / 2
 
     (1 to numLayers).foldLeft(x, List.empty[LinearActivationCache]) {
       case ((aPrev, caches), l) =>
         val w = parameters(s"W$l")
         val b = parameters(s"b$l")
-
-        val activation = activations(l - 1).forward
+        val activation = if (l == numLayers) sigmoidForward else reluForward
         val (a, cache) = linearActivationForward(aPrev, w, b, activation)
         (a, caches :+ cache)
     }
   }
 
   /**
-  Implement the linear portion of backward propagation for a single layer (layer l)
+    Implement the cost function defined by equation (7).
+
+    Arguments:
+    AL -- probability vector corresponding to your label predictions, shape (1, number of examples)
+    Y -- true "label" vector (for example: containing 0 if non-cat, 1 if cat), shape (1, number of examples)
+
+    Returns:
+    cost -- cross-entropy cost
+    */
+  def crossEntropyCost(yHat: Tensor, y: Tensor): Double = {
+    val m = y.shape(1)
+
+//    val logProbs = numsca.log(yHat) * y + (-y + 1) * numsca.log(-yHat + 1)
+//    val cost = -numsca.sum(logProbs)(0, 0) / m
+//    cost
+
+    val cost = (-y.dot(numsca.log(yHat).transpose) - (-y + 1)
+      .dot(numsca.log(-yHat + 1).transpose)) / m
+    cost.squeeze()
+
+  }
+
+  /**
+    Implement the linear portion of backward propagation for a single layer (layer l)
 
     Arguments:
     dZ -- Gradient of the cost with respect to the linear output (of current layer l)
@@ -200,7 +231,7 @@ object MyNet extends App {
   }
 
   /**
-  Implement the backward propagation for the LINEAR->ACTIVATION layer.
+    Implement the backward propagation for the LINEAR->ACTIVATION layer.
 
     Arguments:
     dA -- post-activation gradient for current layer l
@@ -223,7 +254,7 @@ object MyNet extends App {
   }
 
   /**
-  Implement the backward propagation for the [LINEAR->RELU] * (L-1) -> LINEAR -> SIGMOID group
+    Implement the backward propagation for the [LINEAR->RELU] * (L-1) -> LINEAR -> SIGMOID group
 
     Arguments:
     AL -- probability vector, output of the forward propagation (L_model_forward())
@@ -242,19 +273,21 @@ object MyNet extends App {
   def lModelBackward(
       al: Tensor,
       rawY: Tensor,
-      dout: Tensor,
-      activations: List[Activation],
       caches: List[LinearActivationCache]): (Map[String, Tensor], Tensor) = {
     val numLayers = caches.size
-    // val y = rawY.reshape(al.shape)
+    val y = rawY.reshape(al.shape)
+
+    // derivative of cost with respect to AL
+    val dal = -(y / al - (-y + 1) / (-al + 1))
 
     (1 to numLayers).reverse
-      .foldLeft(Map.empty[String, Tensor], dout) {
+      .foldLeft(Map.empty[String, Tensor], dal) {
         case ((grads, da), l) =>
           val currentCache = caches(l - 1)
-          val backward = activations(l - 1).backward
+          val activation =
+            if (l == numLayers) sigmoidBackward else reluBackward
           val (daPrev, dw, db) =
-            linearActivationBackward(da, currentCache, backward)
+            linearActivationBackward(da, currentCache, activation)
           val newGrads = grads ++ Seq(s"dA$l" -> daPrev,
                                       s"dW$l" -> dw,
                                       s"db$l" -> db)
@@ -263,7 +296,7 @@ object MyNet extends App {
   }
 
   /**
-  Update parameters using gradient descent
+      Update parameters using gradient descent
 
     Arguments:
     parameters -- python dictionary containing your parameters
@@ -283,7 +316,7 @@ object MyNet extends App {
     }
 
   /**
-  Implements a L-layer neural network: [LINEAR->RELU]*(L-1)->LINEAR->SIGMOID.
+    Implements a L-layer neural network: [LINEAR->RELU]*(L-1)->LINEAR->SIGMOID.
 
     Arguments:
     X -- data, numpy array of shape (number of examples, num_px * num_px * 3)
@@ -302,34 +335,22 @@ object MyNet extends App {
                   layerDims: Array[Int],
                   learningRate: Double = 0.0075,
                   numIterations: Int = 3000,
-                  costFunction: CostFunction = crossEntropyCost,
-                  activations: List[Activation] = List.empty,
                   printCost: Boolean = false): Map[String, Tensor] = {
 
     val initialParameters = initializeParameters(layerDims)
 
-    val activationsToUse =
-      if (activations.isEmpty)
-        List.fill(layerDims.length - 1)(new Relu()) :+ new Sigmoid()
-      else
-        activations
-
     (1 to numIterations).foldLeft(initialParameters) {
       case (parameters, i) =>
-        val (al, caches) = lModelForward(x, parameters, activationsToUse)
-        val (cost, dout) = costFunction(al, y)
-        if (printCost && i % 100 == 0) {
-          println(s"iteration $i: cost = $cost")
-          // println(numsca.sum(y == numsca.argmax(al)))
-          println(numsca.sum(y == numsca.ceil(al)))
-        }
-        val (grads, _) = lModelBackward(al, y, dout, activationsToUse, caches)
+        val (al, caches) = lModelForward(x, parameters)
+        val cost = crossEntropyCost(al, y)
+        if (printCost && i % 100 == 0) println(s"iteration $i: cost = $cost")
+        val (grads, _) = lModelBackward(al, y, caches)
         updateParameters(parameters, grads, learningRate)
     }
   }
 
   /**
-  This function is used to predict the results of a  L-layer neural network.
+    This function is used to predict the results of a  L-layer neural network.
 
     Arguments:
     X -- data set of examples you would like to label
@@ -339,13 +360,11 @@ object MyNet extends App {
     p -- predictions for the given dataset X
 
     */
-  def predict(x: Tensor,
-              y: Tensor,
-              parameters: Map[String, Tensor],
-              activations: List[Activation]): Double = {
+  def predict(x: Tensor, y: Tensor, parameters: Map[String, Tensor]): Double = {
     val m = x.shape(1)
+    val n = parameters.size / 2
 
-    val (probas, _) = lModelForward(x, parameters, activations)
+    val (probas, _) = lModelForward(x, parameters)
 
     // convert probas to 0/1 predictions
     val p = probas > 0.5
