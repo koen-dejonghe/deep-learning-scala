@@ -69,5 +69,28 @@ class LayersSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     dbError should be < 1e-9
   }
 
+  it should "correctly compute the relu forward pass" in {
+    val x = numsca.linspace(-0.5, 0.5, 12).reshape(3, 4)
+    val out = Layers.reluForward(x)._1
 
+    val correctData = Array(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.04545455,
+      0.13636364, 0.22727273, 0.31818182, 0.40909091, 0.5)
+    val correctOut = Tensor(correctData).reshape(x.shape)
+    val error = relError(out, correctOut)
+    error should be < 6e-8
+  }
+
+  it should "correctly compute the relu backward pass" in {
+    val x = numsca.randn(10, 10)
+    val dout = numsca.randn(x.shape)
+
+    def fdx(a: Tensor) = Layers.reluForward(x)._1
+
+    val dxNum = evalNumericalGradientArray(fdx, x, dout)
+    val cache = Layers.reluForward(x)._2
+    val dx = Layers.reluBackward(dout, cache)
+    val dxError = relError(dx, dxNum)
+
+    dxError should be < 1e-11
+  }
 }

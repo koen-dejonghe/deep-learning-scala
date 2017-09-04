@@ -61,4 +61,37 @@ object Layers {
     (dx, dw, db)
   }
 
+  /**
+    *     Computes the forward pass for a layer of rectified linear units (ReLUs).
+    *
+    *     Input:
+    *     - x: Inputs, of any shape
+    *
+    *     Returns a tuple of:
+    *     - out: Output, of the same shape as x
+    *     - cache: x
+    */
+  def reluForward(x: Tensor): (Tensor, Tensor) = {
+    val out = numsca.maximum(x, 0.0)
+    val cache = x
+    (out, cache)
+  }
+
+  /**
+    *     Computes the backward pass for a layer of rectified linear units (ReLUs).
+    *
+    *     Input:
+    *     - dout: Upstream derivatives, of any shape
+    *     - cache: Input x, of same shape as dout
+    *
+    *     Returns:
+    *     - dx: Gradient with respect to x
+    */
+  def reluBackward(dout: Tensor, cache: Tensor): Tensor = {
+    val x = cache > 0.0
+    dout * x
+  }
+
+
+
 }
