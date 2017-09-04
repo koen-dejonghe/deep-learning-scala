@@ -3,6 +3,7 @@ package numsca
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.indexing.NDArrayIndex
+import org.nd4j.linalg.ops.transforms.Transforms
 
 class Tensor(val array: INDArray) {
 
@@ -55,6 +56,10 @@ class Tensor(val array: INDArray) {
   def ==(other: Tensor): Tensor = new Tensor(array eq bc(other))
   def !=(other: Tensor): Tensor = new Tensor(array neq bc(other))
 
+  def maximum(other: Tensor): Tensor = new Tensor(Transforms.max(this.array, bc(other)))
+  def maximum(d: Double): Tensor = new Tensor(Transforms.max(this.array, d))
+  def minimum(other: Tensor): Tensor = new Tensor(Transforms.min(this.array, bc(other)))
+  def minimum(d: Double): Tensor = new Tensor(Transforms.min(this.array, d))
 
   private def bc(other: Tensor): INDArray =
     if (sameShape(other))
@@ -67,14 +72,13 @@ class Tensor(val array: INDArray) {
     array.getDouble(0, 0)
   }
 
-
   def apply(index: Int*): Double = array.getDouble(index: _*)
-  def apply(index: Array[Int]): Double = array.getDouble(index: _*)
+  def apply(index: Array[Int]): Double = apply(index: _*)
 
   def put(index: Int*)(d: Double): Unit =
     array.put(NDArrayIndex.indexesFor(index: _*), d)
   def put(index: Array[Int], d: Double): Unit =
-    array.put(NDArrayIndex.indexesFor(index: _*), d)
+    put(index:_*)(d)
 
   def sameShape(other: Tensor): Boolean = shape sameElements other.shape
   def sameElements(other: Tensor): Boolean = data sameElements other.data
@@ -90,9 +94,5 @@ object Tensor {
   }
 
   def apply(data: Double*): Tensor = Tensor(data.toArray)
-  def apply(data: Double*)(shape: Int*): Tensor = {
-    val t = Tensor.apply(data.toArray)
-    t.reshape(shape)
-  }
 
 }

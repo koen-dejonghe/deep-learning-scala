@@ -89,7 +89,7 @@ object LLayeredNet {
 
     */
   def reluForward: ForwardActivationFunction = (z: Tensor) => {
-    val a = numsca.maximum(0.0, z)
+    val a = numsca.maximum(z, 0.0)
     (a, z)
   }
 

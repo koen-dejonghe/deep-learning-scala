@@ -1,3 +1,4 @@
+import org.nd4j.linalg.api.iter.NdIndexIterator
 import org.nd4j.linalg.api.ops.impl.indexaccum.IAMax
 import org.nd4j.linalg.api.rng
 import org.nd4j.linalg.factory.Nd4j
@@ -31,7 +32,10 @@ package object numsca {
 
   def abs(t: Tensor): Tensor = new Tensor(Transforms.abs(t.array))
 
-  def maximum(d: Double, t: Tensor): Tensor = new Tensor(Transforms.max(t.array, d))
+  def maximum(t: Tensor, d: Double): Tensor = t.maximum(d)
+  def maximum(a: Tensor, b: Tensor): Tensor = a.maximum(b)
+  def minimum(t: Tensor, d: Double): Tensor = t.minimum(d)
+  def minimum(a: Tensor, b: Tensor): Tensor = a.minimum(b)
 
   def max(t: Tensor): Tensor = new Tensor(Nd4j.max(t.array))
 
@@ -49,6 +53,8 @@ package object numsca {
   def exp(t: Tensor): Tensor = new Tensor(Transforms.exp(t.array))
   def sqrt(t: Tensor): Tensor = new Tensor(Transforms.sqrt(t.array))
   def square(t: Tensor): Tensor = power(t, 2)
+
+  def nditer(t: Tensor) = new NdIndexIterator(t.shape: _*)
 
   def argmax(t: Tensor, axis: Int): Tensor =
     new Tensor(Nd4j.getExecutioner.exec(new IAMax(t.array), axis))
