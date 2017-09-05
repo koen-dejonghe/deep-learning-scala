@@ -14,6 +14,7 @@ Everything in ML must be written in Python these days it seems.
 Main culprit for this is in my opinion the excellent numpy library.
 The numsca package is my futile attempt to mimic some of its most useful functionality.
 It's a thin wrapper around the nd4j N-Dimensional Arrays for Java library (http://nd4j.org/)
+
 I think the result is quite elegant.
 For example, check out the following code:
 
