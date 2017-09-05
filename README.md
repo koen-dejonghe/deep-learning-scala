@@ -2,13 +2,12 @@
 
 Scala implementation of assignments of some courses:
 
-CS231n: Convolutional Neural Networks for Visual Recognition
-http://cs231n.github.io/
-Python code is at: https://github.com/koen-dejonghe/cs231n
+- CS231n: Convolutional Neural Networks for Visual Recognition
+  - http://cs231n.github.io/
+  - Python code is at: https://github.com/koen-dejonghe/cs231n
 
-Coursera's Deep Learning specialization
-https://www.coursera.org/specializations/deep-learning
-
+- Coursera's Deep Learning specialization 
+  - https://www.coursera.org/specializations/deep-learning
 
 
 Everything in ML must be written in Python these days it seems.
@@ -21,25 +20,27 @@ For example, check out the following code:
 In Scala with numsca:
 
 
+```scala
+  def svmLoss(x: Tensor, y: Tensor): (Double, Tensor) = {
+    val n = x.shape(0)
+    val correctClassScores = x(y)
+    val margins = numsca.maximum(x - correctClassScores + 1.0, 0.0)
+    margins.put(y, 0)
+    val loss = numsca.sum(margins).squeeze() / n
 
-      def svmLoss(x: Tensor, y: Tensor): (Double, Tensor) = {
-        val n = x.shape(0)
-        val correctClassScores = x(y)
-        val margins = numsca.maximum(x - correctClassScores + 1.0, 0.0)
-        margins.put(y, 0)
-        val loss = numsca.sum(margins).squeeze() / n
+    val numPos = numsca.sum(margins > 0, axis = 1)
+    val dx = numsca.zerosLike(x)
+    dx.put(margins > 0, 1)
+    dx.put(y, (ix, d) => d - numPos(ix.head))
+    dx /= n
 
-        val numPos = numsca.sum(margins > 0, axis = 1)
-        val dx = numsca.zerosLike(x)
-        dx.put(margins > 0, 1)
-        dx.put(y, (ix, d) => d - numPos(ix.head))
-        dx /= n
-
-        (loss, dx)
-      }
+    (loss, dx)
+  }
+```
 
 In Python with numpy:
 
+```python
     def svm_loss(x, y):
         N = x.shape[0]
         correct_class_scores = x[np.arange(N), y]
@@ -54,9 +55,8 @@ In Python with numpy:
         dx /= N
 
         return loss, dx
-
-
-
+```
 
 Numsca can be found at:
+
 https://github.com/koen-dejonghe/deep-learning-scala/tree/master/src/main/scala/numsca
