@@ -9,7 +9,7 @@ class LayersSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
 
   override def beforeEach(): Unit = {
     DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
-    numsca.rand.setSeed(231)
+    numsca.rand.setSeed(1)
   }
 
   "A Layer" should "correctly compute the affine forward pass" in {
@@ -93,7 +93,6 @@ class LayersSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
   }
 
   it should "correctly compute the svm loss and gradient" in {
-    numsca.rand.setSeed(1)
     val numClasses = 10
     val numInputs = 50
 
