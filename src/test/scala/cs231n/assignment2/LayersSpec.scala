@@ -46,10 +46,7 @@ class LayersSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     val dout = numsca.randn(10, 5)
 
     val cache = Layers.affineForward(x, w, b)._2
-    val derivatives = Layers.affineBackward(dout, cache)
-    val dx = derivatives._1
-    val dw = derivatives._2
-    val db = derivatives._3
+    val (dx, dw, db) = Layers.affineBackward(dout, cache)
 
     def fdx(a: Tensor) = Layers.affineForward(a, w, b)._1
     def fdw(a: Tensor) = Layers.affineForward(x, a, b)._1
