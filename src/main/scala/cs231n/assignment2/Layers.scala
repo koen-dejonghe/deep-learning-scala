@@ -92,6 +92,62 @@ object Layers {
     dout * x
   }
 
+  /**
+    *     Computes the loss and gradient using for multiclass SVM classification.
+    *
+    *     Inputs:
+    *     - x: Input data, of shape (N, C) where x[i, j] is the score for the jth
+    *       class for the ith input.
+    *     - y: Vector of labels, of shape (N,) where y[i] is the label for x[i] and
+    *       0 <= y[i] < C
+    *
+    *     Returns a tuple of:
+    *     - loss: Scalar giving the loss
+    *     - dx: Gradient of the loss with respect to x
+    */
+  def svmLoss(x: Tensor, y: Tensor): (Double, Tensor) = {
+    val n = x.shape(0)
+    val correctClassScores = x(y)
+    val margins = numsca.maximum(x - correctClassScores + 1.0, 0.0)
+    margins.put(y, 0)
+    val loss = numsca.sum(margins).squeeze() / n
 
+    val numPos = numsca.sum(margins > 0, axis = 1)
+    val dx = numsca.zerosLike(x)
+    dx.put(margins > 0, 1)
+    dx.put(y, (ix, d) => d - numPos(ix.head))
+    dx /= n
+
+    (loss, dx)
+  }
+
+  /**
+    *     Computes the loss and gradient for softmax classification.
+    *
+    *     Inputs:
+    *     - x: Input data, of shape (N, C) where x[i, j] is the score for the jth
+    *       class for the ith input.
+    *     - y: Vector of labels, of shape (N,) where y[i] is the label for x[i] and
+    *       0 <= y[i] < C
+    *
+    *     Returns a tuple of:
+    *     - loss: Scalar giving the loss
+    *     - dx: Gradient of the loss with respect to x
+    */
+  def softmaxLoss(x: Tensor, y: Tensor): (Double, Tensor) = {
+
+    val shiftedLogits = x - numsca.max(x, axis = 1)
+    val z = numsca.sum(numsca.exp(shiftedLogits), axis = 1)
+    val logProbs = shiftedLogits - numsca.log(z)
+    val probs = numsca.exp(logProbs)
+    val n = x.shape(0)
+    val loss = - numsca.sum(logProbs(y)).squeeze() / n
+
+    val dx = probs
+    dx.put(y, _ - 1)
+    dx /= n
+
+    (loss, dx)
+  }
 
 }

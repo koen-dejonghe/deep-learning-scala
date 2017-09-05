@@ -31,9 +31,8 @@ class LayersSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     val out = Layers.affineForward(x, w, b)._1
 
-    val correctData = Array(1.49834967, 1.70660132, 1.91485297, 3.25553199,
-      3.5141327, 3.77273342)
-    val correctOut = Tensor(correctData).reshape(numInputs, outputDim)
+    val correctOut = Tensor(1.49834967, 1.70660132, 1.91485297, 3.25553199,
+      3.5141327, 3.77273342).reshape(numInputs, outputDim)
 
     val error = relError(out, correctOut)
     error should be < 1e-9
@@ -73,9 +72,8 @@ class LayersSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     val x = numsca.linspace(-0.5, 0.5, 12).reshape(3, 4)
     val out = Layers.reluForward(x)._1
 
-    val correctData = Array(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.04545455,
-      0.13636364, 0.22727273, 0.31818182, 0.40909091, 0.5)
-    val correctOut = Tensor(correctData).reshape(x.shape)
+    val correctOut = Tensor(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.04545455,
+      0.13636364, 0.22727273, 0.31818182, 0.40909091, 0.5).reshape(x.shape)
     val error = relError(out, correctOut)
     error should be < 6e-8
   }
@@ -84,7 +82,7 @@ class LayersSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     val x = numsca.randn(10, 10)
     val dout = numsca.randn(x.shape)
 
-    def fdx(a: Tensor) = Layers.reluForward(x)._1
+    def fdx(a: Tensor) = Layers.reluForward(a)._1
 
     val dxNum = evalNumericalGradientArray(fdx, x, dout)
     val cache = Layers.reluForward(x)._2
@@ -93,4 +91,42 @@ class LayersSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     dxError should be < 1e-11
   }
+
+  it should "correctly compute the svm loss and gradient" in {
+    numsca.rand.setSeed(1)
+    val numClasses = 10
+    val numInputs = 50
+
+    val x = numsca.randn(numInputs, numClasses) * 0.001
+    val y = numsca.randint(numClasses, numInputs, 1)
+
+    def fdx(a: Tensor) = Layers.svmLoss(x, y)._1
+    val dxNum = evalNumericalGradient(fdx, x)
+
+    val (loss, dx) = Layers.svmLoss(x, y)
+
+    loss should equal (9.0 +- 0.2)
+
+    val dxError = relError(dx, dxNum)
+    dxError should be < 1.5e-9
+  }
+
+  it should "correctly compute the softmax loss and gradient" in {
+    val numClasses = 10
+    val numInputs = 50
+
+    val x = numsca.randn(numInputs, numClasses) * 0.001
+    val y = numsca.randint(numClasses, numInputs, 1)
+
+    def fdx(a: Tensor) = Layers.softmaxLoss(a, y)._1
+    val dxNum: Tensor = evalNumericalGradient(fdx, x)
+
+    val (loss, dx) = Layers.softmaxLoss(x, y)
+
+    loss should equal (2.3 +- 0.2)
+
+    val dxError = relError(dx, dxNum)
+    dxError should be < 1e-7
+  }
+
 }
