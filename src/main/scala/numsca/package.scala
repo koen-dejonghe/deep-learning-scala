@@ -10,6 +10,13 @@ import scala.util.Random
 
 package object numsca {
 
+  implicit class DoubleImprovements(d: Double) {
+    def +(t: Tensor): Tensor = t + d
+    def -(t: Tensor): Tensor = -t + d
+    def *(t: Tensor): Tensor = t * d
+    def /(t: Tensor): Tensor = numsca.power(t, -1) * d
+  }
+
   def rand: rng.Random = Nd4j.getRandom
 
   def zeros(shape: Int*): Tensor = new Tensor(Nd4j.zeros(shape: _*))

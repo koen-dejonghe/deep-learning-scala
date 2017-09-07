@@ -27,7 +27,8 @@ object LLayeredNet {
   def initializeParameters(layerDims: Array[Int]): Map[String, Tensor] =
     (1 until layerDims.length).foldLeft(Map.empty[String, Tensor]) {
       case (parameters, l) =>
-        val w = numsca.randn(layerDims(l), layerDims(l - 1)) / math.sqrt(layerDims(l-1))
+        val w = numsca.randn(layerDims(l), layerDims(l - 1)) / math.sqrt(
+          layerDims(l - 1))
         // val w = numsca.randn(layerDims(l), layerDims(l - 1)) * math.sqrt(2.0 / layerDims(l-1))
         val b = numsca.zeros(layerDims(l), 1)
         parameters ++ Seq(s"W$l" -> w, s"b$l" -> b)
@@ -147,7 +148,7 @@ object LLayeredNet {
       val dz = da * s * (-s + 1)
       dz
        */
-      da * cache * (-cache + 1)
+      da * cache * (1 - cache)
     }
 
   /**
@@ -191,13 +192,12 @@ object LLayeredNet {
     val m = y.shape(1)
 
 //    val logProbs = numsca.log(yHat) * y + (-y + 1) * numsca.log(-yHat + 1)
-//    val cost = -numsca.sum(logProbs)(0, 0) / m
-//    cost
+//    val cost = -numsca.sum(logProbs) / m
 
-    val cost = (-y.dot(numsca.log(yHat).transpose) - (-y + 1)
-      .dot(numsca.log(-yHat + 1).transpose)) / m
+    val cost = (-y.dot(numsca.log(yHat).T) -
+      (1 - y).dot(numsca.log(1 - yHat).T)) / m
+
     cost.squeeze()
-
   }
 
   /**
@@ -278,7 +278,7 @@ object LLayeredNet {
     val y = rawY.reshape(al.shape)
 
     // derivative of cost with respect to AL
-    val dal = -(y / al - (-y + 1) / (-al + 1))
+    val dal = -(y / al - (1 - y) / (1 - al))
 
     (1 to numLayers).reverse
       .foldLeft(Map.empty[String, Tensor], dal) {

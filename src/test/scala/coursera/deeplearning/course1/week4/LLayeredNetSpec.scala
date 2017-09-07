@@ -185,6 +185,7 @@ class LLayeredNetSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     val w1 = Tensor(-1.02387576, 1.12397796, -0.13191423).reshape(1, 3)
     val b1 = Tensor(-1.62328545)
     val linearCache1 = new LinearCache(a1, w1, b1)
+    // activation cache 1 should be sigmoid, since we changed the algo like so
     // val activationCache1 = Tensor(0.64667545, -0.35627076).reshape(1, 2)
     val activationCache1 =
       numsca.sigmoid(Tensor(0.64667545, -0.35627076).reshape(1, 2))
