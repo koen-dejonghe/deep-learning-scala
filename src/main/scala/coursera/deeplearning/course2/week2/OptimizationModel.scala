@@ -229,8 +229,8 @@ object OptimizationModel {
       s(s"db$l") += (1 - beta2) * square(grads(s"db$l"))
 
       // Compute bias-corrected second raw moment estimate. Inputs: "s, beta2, t". Output: "s_corrected".
-      val sCorrectedW = v(s"dW$l") / math.pow(1 - beta2, 2)
-      val sCorrectedB = v(s"db$l") / math.pow(1 - beta2, 2)
+      val sCorrectedW = s(s"dW$l") / math.pow(1 - beta2, 2)
+      val sCorrectedB = s(s"db$l") / math.pow(1 - beta2, 2)
 
       // Update parameters. Inputs: "parameters, learning_rate, v_corrected, s_corrected, epsilon". Output: "parameters".
       parameters(s"W$l") -= learningRate * (vCorrectedW / (sqrt(sCorrectedW) + epsilon))
