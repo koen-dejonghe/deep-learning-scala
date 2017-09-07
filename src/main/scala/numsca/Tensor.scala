@@ -2,11 +2,9 @@ package numsca
 
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
-import org.nd4j.linalg.indexing.{INDArrayIndex, NDArrayIndex}
+import org.nd4j.linalg.indexing.NDArrayIndex
 import org.nd4j.linalg.ops.transforms.Transforms
 
-import scala.annotation.tailrec
-import scala.collection.immutable
 import scala.language.postfixOps
 
 class Tensor(val array: INDArray, val isBoolean: Boolean = false) {
@@ -119,17 +117,17 @@ class Tensor(val array: INDArray, val isBoolean: Boolean = false) {
       inputs.foldRight(Seq[List[T]](Nil))((el, rest) =>
         el.flatMap(p => rest.map(p :: _)))
 
-    val data  = cross(ranges).map { ii =>
+    val correctedRanges = ranges.zipWithIndex.map {
+      case (r, i) =>
+        if (r.isEmpty) 0 until shape(i) else r
+    }
+
+    val dta = cross(correctedRanges).map { ii =>
       apply(ii.toArray)
     } toArray
 
-    val newShape = ranges.map(_.length).toArray
-
-    val t = Tensor(data).reshape(newShape)
-
-    println(t)
-
-    t
+    val newShape = correctedRanges.map(_.length).toArray
+    Tensor(dta).reshape(newShape)
   }
 
   def put(index: Int*)(d: Double): Unit =

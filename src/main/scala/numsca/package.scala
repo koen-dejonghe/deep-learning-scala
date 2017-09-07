@@ -5,8 +5,8 @@ import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.ops.transforms.Transforms
 
 import scala.collection.JavaConverters._
-import scala.collection.immutable
 import scala.language.implicitConversions
+import scala.runtime.RichInt
 import scala.util.Random
 
 package object numsca {
