@@ -2,22 +2,24 @@ package numsca
 
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
-import org.nd4j.linalg.indexing.NDArrayIndex
+import org.nd4j.linalg.indexing.{INDArrayIndex, NDArrayIndex}
 import org.nd4j.linalg.ops.transforms.Transforms
 
+import scala.annotation.tailrec
+import scala.collection.immutable
 import scala.language.postfixOps
 
 class Tensor(val array: INDArray, val isBoolean: Boolean = false) {
 
+  def data: Array[Double] = array.dup.data.asDouble
+
   def shape: Array[Int] = array.shape()
+  def reshape(newShape: Array[Int]) = new Tensor(array.reshape(newShape: _*))
+  def reshape(newShape: Int*) = new Tensor(array.reshape(newShape: _*))
+  def shapeLike(t: Tensor): Tensor = reshape(t.shape)
 
   def transpose = new Tensor(array.transpose())
   def T: Tensor = transpose
-
-  def reshape(newShape: Array[Int]) = new Tensor(array.reshape(newShape: _*))
-  def reshape(newShape: Int*) = new Tensor(array.reshape(newShape: _*))
-
-  def data: Array[Double] = array.dup.data.asDouble
 
   def dot(other: Tensor) = new Tensor(array mmul other.array)
 
@@ -103,11 +105,31 @@ class Tensor(val array: INDArray, val isBoolean: Boolean = false) {
     if (t.isBoolean) indexByBooleanTensor(t) else indexByTensor(t)
 
   /*
-  slicer
+  slice by tensor
    */
   def apply(t: Tensor): Tensor = {
     val d = indexBy(t).map(apply)
     Tensor(d).reshape(t.shape)
+  }
+
+  def apply(ranges: Seq[Int]*): Tensor = {
+    require(ranges.length == shape.length)
+
+    def cross[T](inputs: Seq[Seq[T]]): Seq[Seq[T]] =
+      inputs.foldRight(Seq[List[T]](Nil))((el, rest) =>
+        el.flatMap(p => rest.map(p :: _)))
+
+    val data  = cross(ranges).map { ii =>
+      apply(ii.toArray)
+    } toArray
+
+    val newShape = ranges.map(_.length).toArray
+
+    val t = Tensor(data).reshape(newShape)
+
+    println(t)
+
+    t
   }
 
   def put(index: Int*)(d: Double): Unit =

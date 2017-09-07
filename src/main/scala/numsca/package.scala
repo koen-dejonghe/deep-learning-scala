@@ -5,16 +5,22 @@ import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.ops.transforms.Transforms
 
 import scala.collection.JavaConverters._
+import scala.collection.immutable
 import scala.language.implicitConversions
 import scala.util.Random
 
 package object numsca {
 
-  implicit class DoubleImprovements(d: Double) {
+  implicit class NumscaDoubleOps(d: Double) {
     def +(t: Tensor): Tensor = t + d
     def -(t: Tensor): Tensor = -t + d
     def *(t: Tensor): Tensor = t * d
     def /(t: Tensor): Tensor = numsca.power(t, -1) * d
+  }
+
+  def :> : Range = 0 until -1
+  implicit class NumscaRange(i: Int) {
+    def :>(end: Int): Range = i until end
   }
 
   def rand: rng.Random = Nd4j.getRandom
@@ -80,4 +86,7 @@ package object numsca {
   def round(t: Tensor): Tensor = new Tensor(Transforms.round(t.array))
   def ceil(t: Tensor): Tensor = new Tensor(Transforms.ceil(t.array))
   def floor(t: Tensor): Tensor = new Tensor(Transforms.floor(t.array))
+
+  def multiply(a: Tensor, b: Tensor): Tensor = a * b
+  def dot(a: Tensor, b: Tensor): Tensor = a dot b
 }
