@@ -99,7 +99,7 @@ class Tensor(val array: INDArray, val isBoolean: Boolean = false) {
     }
   }
 
-  private def indexBy(t: Tensor) =
+  private def indexBy(t: Tensor): Array[Array[Int]] =
     if (t.isBoolean) indexByBooleanTensor(t) else indexByTensor(t)
 
   /*
