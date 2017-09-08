@@ -40,8 +40,6 @@ class OptimizationModelSpec
     yBatches(1).shape shouldBe Array(1, 64)
     yBatches(2).shape shouldBe Array(1, 20)
 
-    println(xBatches(1)(0 :> 1, 0 :> 1))
-    println(yBatches(1)(0 :> 1, 0 :> 1))
   }
 
   it should "update parameters with adam" in {

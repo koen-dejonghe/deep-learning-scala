@@ -240,4 +240,90 @@ object OptimizationModel {
     (parameters, v, s)
   }
 
+  /**
+    3-layer neural network model which can be run in different optimizer modes.
+
+    Arguments:
+    X -- input data, of shape (2, number of examples)
+    Y -- true "label" vector (1 for blue dot / 0 for red dot), of shape (1, number of examples)
+    layers_dims -- python list, containing the size of each layer
+    learning_rate -- the learning rate, scalar.
+    mini_batch_size -- the size of a mini batch
+    beta -- Momentum hyperparameter
+    beta1 -- Exponential decay hyperparameter for the past gradients estimates
+    beta2 -- Exponential decay hyperparameter for the past squared gradients estimates
+    epsilon -- hyperparameter preventing division by zero in Adam updates
+    num_epochs -- number of epochs
+    print_cost -- True to print the cost every 1000 epochs
+
+    Returns:
+    parameters -- python dictionary containing your updated parameters
+    */
+  def model(x: Tensor,
+            y: Tensor,
+            layersDims: Array[Int],
+            optimizer: String,
+            learningRate: Double = 0.0007,
+            miniBatchSize: Int = 64,
+            beta: Double = 0.9,
+            beta1: Double = 0.9,
+            beta2: Double = 0.999,
+            epsilon: Double = 1e-8,
+            numEpochs: Int = 10000,
+            printCost: Boolean = true,
+            opt: Optimizer) = {
+
+    import OptUtils._
+
+    val numLayers = layersDims.length
+
+    val parameters = initializeParameters(layersDims)
+
+    val seed = 10
+
+    for (i <- 1 to numEpochs) {
+      val (miniBatchesX, miniBatchesY) =
+        randomMiniBatches(x, y, miniBatchSize, seed + i)
+      val miniBatches = miniBatchesX.zip(miniBatchesY)
+
+      miniBatches.foreach {
+        case (miniBatchX, miniBatchY) =>
+          val (a3, caches) = forwardPropagation(x, parameters)
+          val cost = computeCost(a3, y)
+          val grads = backwardPropagation(miniBatchX, miniBatchY, caches)
+      }
+    }
+
+  }
+
+  trait Optimizer {
+    def init: Optimizer
+    def update: Optimizer
+  }
+
+  case class GradientDescentOptimizer(parameters: TensorMap,
+                                      grads: TensorMap,
+                                      learningRate: Double)
+      extends Optimizer {
+    override def init: Optimizer = this
+    override def update: Optimizer =
+      copy(parameters = updateParametersWithGd(parameters, grads, learningRate))
+  }
+
+  case class MomentumOptimizer(parameters: TensorMap,
+                               grads: TensorMap,
+                               v: TensorMap = initializeVelocity(parameters),
+                               beta: Double,
+                               learningRate: Double)
+      extends Optimizer {
+
+    override def init: Optimizer = copy(v = initializeVelocity(parameters))
+
+    override def update: Optimizer = {
+      val (newParameters, newV) =
+        updateParametersWithMomentum(parameters, grads, v, beta, learningRate)
+      copy(parameters = newParameters, v = newV)
+    }
+  }
+
 }
