@@ -65,8 +65,12 @@ object OptUtils {
     */
   def computeCost(yHat: Tensor, y: Tensor): Double = {
     val m = y.shape(1)
-    val logprobs = multiply(-log(yHat), y) + multiply(-log(1 - yHat), 1 - y)
-    val cost = 1.0 / m * sum(logprobs)
+    // val logprobs = multiply(-log(yHat), y) + multiply(-log(1 - yHat), 1 - y)
+    // val cost = 1.0 / m * sum(logprobs)
+    // cost.squeeze()
+
+    val cost = (-y.dot(log(yHat).T) - (1 - y).dot(log(1 - yHat).T)) / m
+
     cost.squeeze()
   }
 
@@ -179,7 +183,9 @@ object OptUtils {
     Returns:
     p -- predictions for the given dataset X
     */
-  def predict(x: Tensor, y: Tensor, parameters: Map[String, Tensor]): Tensor = {
+  def predict(x: Tensor,
+              y: Tensor,
+              parameters: Map[String, Tensor]): (Double, Tensor) = {
     val m = x.shape(1)
     val n = parameters.size / 2
 
@@ -189,8 +195,7 @@ object OptUtils {
     val p = probas > 0.5
 
     val accuracy = sum(p == y).squeeze() / m
-    println(s"Accuracy: $accuracy")
-    p
+    (accuracy, p)
   }
 
   def readData(fileName: String, shape: Array[Int]): Tensor = {

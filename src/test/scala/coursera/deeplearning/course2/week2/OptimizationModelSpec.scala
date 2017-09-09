@@ -191,4 +191,55 @@ class OptimizationModelSpec
       }
     }
 
+  it should "train a 3 layer model with Mini-batch Gradient descent" in {
+    val (trainX, trainY) = OptUtils.loadData()
+
+    val layersDims = Array(trainX.shape(0), 5, 2, 1)
+
+    val parameters =
+      OptimizationModel.model(trainX, trainY, layersDims, optimizer = "gd")
+
+    val (accuracy, _) = OptUtils.predict(trainX, trainY, parameters)
+
+    println(s"Accuracy: $accuracy")
+
+    accuracy should be > 0.8
+  }
+
+  it should "train a 3 layer model with Mini-batch Gradient descent with momentum" in {
+    val (trainX, trainY) = OptUtils.loadData()
+    val layersDims = Array(trainX.shape(0), 5, 2, 1)
+
+    val parameters = OptimizationModel.model(trainX,
+                                             trainY,
+                                             layersDims,
+                                             optimizer = "momentum")
+
+    val (accuracy, _) = OptUtils.predict(trainX, trainY, parameters)
+
+    println(s"Accuracy: $accuracy")
+
+    accuracy should be > 0.8
+  }
+
+  it should "train a 3 layer model with Mini-batch Gradient descent with adam" in {
+    val (trainX, trainY) = OptUtils.loadData()
+
+    val layersDims = Array(trainX.shape(0), 5, 2, 1)
+
+    val parameters = OptimizationModel.model(trainX,
+      trainY,
+      layersDims,
+      // miniBatchSize = 300,
+      optimizer = "momentum",
+      learningRate = 7e-4,
+      // numEpochs = 20000
+    )
+
+    val (accuracy, _) = OptUtils.predict(trainX, trainY, parameters)
+    println(s"Accuracy: $accuracy")
+
+    accuracy should be > 0.8
+  }
+
 }

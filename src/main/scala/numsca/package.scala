@@ -6,7 +6,6 @@ import org.nd4j.linalg.ops.transforms.Transforms
 
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
-import scala.runtime.RichInt
 import scala.util.Random
 
 package object numsca {
@@ -19,6 +18,7 @@ package object numsca {
   }
 
   def :> : Range = 0 until -1
+
   implicit class NumscaRange(i: Int) {
     def :>(end: Int): Range = i until end
   }

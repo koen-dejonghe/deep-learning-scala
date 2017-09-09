@@ -31,7 +31,7 @@ object OptimizationModel {
 
     val numLayers = parameters.size / 2 // number of layers in the neural networks
 
-    for (l <- 0 until numLayers) {
+    for (l <- 1 to numLayers) {
       parameters(s"W$l") -= learningRate * grads(s"dW$l")
       parameters(s"b$l") -= learningRate * grads(s"db$l")
     }
@@ -57,17 +57,18 @@ object OptimizationModel {
     val m = x.shape(1)
 
     Random.setSeed(seed)
-    val permutation = Random.shuffle((0 :> m).toList)
+    val permutation: List[Int] = Random.shuffle((0 :> m).toList)
 
     val shuffledX = x(:>, permutation)
     val shuffledY = y(:>, permutation)
 
-    (0 :> m)
+    (0 until m)
       .sliding(miniBatchSize, miniBatchSize)
       .foldLeft((List.empty[Tensor], List.empty[Tensor])) {
         case ((xs, ys), slice) =>
           (xs :+ shuffledX(:>, slice), ys :+ shuffledY(:>, slice))
       }
+
   }
 
   /**
@@ -270,60 +271,89 @@ object OptimizationModel {
             beta2: Double = 0.999,
             epsilon: Double = 1e-8,
             numEpochs: Int = 10000,
-            printCost: Boolean = true,
-            opt: Optimizer) = {
+            seed: Int = 10,
+            printCost: Boolean = true): Map[String, Tensor] = {
+
+    // disclaimer: this is a translation of a python program,
+    // and is by no means an example of functional programming
 
     import OptUtils._
 
-    val numLayers = layersDims.length
+    // Initialize parameters
+    var parameters = initializeParameters(layersDims)
 
-    val parameters = initializeParameters(layersDims)
+    // Initialize the optimizer
+    var (v, s) = optimizer match {
+      case "momentum" =>
+        (initializeVelocity(parameters), Map.empty[String, Tensor])
+      case "adam" =>
+        initializeAdam(parameters)
+      case _ => // no initialization required for gradient descent
+        (Map.empty[String, Tensor], Map.empty[String, Tensor])
+    }
 
-    val seed = 10
-
+    // Optimization loop
     for (i <- 1 to numEpochs) {
-      val (miniBatchesX, miniBatchesY) =
-        randomMiniBatches(x, y, miniBatchSize, seed + i)
-      val miniBatches = miniBatchesX.zip(miniBatchesY)
+
+      // Define the random minibatches.
+      // We increment the seed to reshuffle differently the dataset after each epoch
+      val miniBatches = {
+        val (miniBatchesX, miniBatchesY) =
+          randomMiniBatches(x, y, miniBatchSize, seed + i)
+        miniBatchesX.zip(miniBatchesY)
+      }
+
+      var cost = 0.0
 
       miniBatches.foreach {
         case (miniBatchX, miniBatchY) =>
-          val (a3, caches) = forwardPropagation(x, parameters)
-          val cost = computeCost(a3, y)
+          // Forward propagation
+          val (a3, caches) = forwardPropagation(miniBatchX, parameters)
+
+          // Compute cost
+          // cost = computeCost(a3, miniBatchY)
+
+          // Backward propagation
           val grads = backwardPropagation(miniBatchX, miniBatchY, caches)
+
+          // update parameters
+          if (optimizer == "gd") {
+            parameters = updateParametersWithGd(parameters, grads, learningRate)
+          } else if (optimizer == "momentum") {
+
+            val pv = updateParametersWithMomentum(parameters,
+                                                  grads,
+                                                  v,
+                                                  beta,
+                                                  learningRate)
+            parameters = pv._1
+            v = pv._2
+          } else if (optimizer == "adam") {
+            val pvs = updateParametersWithAdam(parameters,
+                                               grads,
+                                               v,
+                                               s,
+                                               learningRate,
+                                               beta1,
+                                               beta2,
+                                               epsilon)
+            parameters = pvs._1
+            v = pvs._2
+            s = pvs._3
+          }
+      }
+
+      if (printCost && i % 1000 == 0) {
+        val (a3, caches) = forwardPropagation(x, parameters)
+        cost = computeCost(a3, y)
+        print(s"Cost after epoch $i: $cost ")
+        val (accuracy, _) = OptUtils.predict(x, y, parameters)
+        println(s"Accuracy: $accuracy")
       }
     }
 
-  }
+    parameters
 
-  trait Optimizer {
-    def init: Optimizer
-    def update: Optimizer
-  }
-
-  case class GradientDescentOptimizer(parameters: TensorMap,
-                                      grads: TensorMap,
-                                      learningRate: Double)
-      extends Optimizer {
-    override def init: Optimizer = this
-    override def update: Optimizer =
-      copy(parameters = updateParametersWithGd(parameters, grads, learningRate))
-  }
-
-  case class MomentumOptimizer(parameters: TensorMap,
-                               grads: TensorMap,
-                               v: TensorMap = initializeVelocity(parameters),
-                               beta: Double,
-                               learningRate: Double)
-      extends Optimizer {
-
-    override def init: Optimizer = copy(v = initializeVelocity(parameters))
-
-    override def update: Optimizer = {
-      val (newParameters, newV) =
-        updateParametersWithMomentum(parameters, grads, v, beta, learningRate)
-      copy(parameters = newParameters, v = newV)
-    }
   }
 
 }
