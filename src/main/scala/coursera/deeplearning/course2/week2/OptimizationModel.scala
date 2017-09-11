@@ -303,7 +303,7 @@ object OptimizationModel {
         miniBatchesX.zip(miniBatchesY)
       }
 
-      var cost = 0.0
+      // var cost = 0.0
 
       miniBatches.foreach {
         case (miniBatchX, miniBatchY) =>
@@ -345,7 +345,7 @@ object OptimizationModel {
 
       if (printCost && i % 1000 == 0) {
         val (a3, caches) = forwardPropagation(x, parameters)
-        cost = computeCost(a3, y)
+        val cost = computeCost(a3, y)
         print(s"Cost after epoch $i: $cost ")
         val (accuracy, _) = OptUtils.predict(x, y, parameters)
         println(s"Accuracy: $accuracy")
