@@ -231,9 +231,8 @@ class OptimizationModelSpec
       trainY,
       layersDims,
       // miniBatchSize = 300,
-      optimizer = "momentum",
-      learningRate = 7e-4,
-      // numEpochs = 20000
+      learningRate = 0.2,
+      optimizer = "adam"
     )
 
     val (accuracy, _) = OptUtils.predict(trainX, trainY, parameters)
