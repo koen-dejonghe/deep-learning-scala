@@ -9,7 +9,6 @@ import scala.language.postfixOps
 class LinearGate(shape: Array[Int],
                  next: ActorRef,
                  optimizer: Optimizer,
-                 // learningRate: Double,
                  seed: Option[Long] = Some(231))
     extends Actor {
 
@@ -25,19 +24,19 @@ class LinearGate(shape: Array[Int],
 
   def accept(w: Tensor,
              b: Tensor,
-             cache: Option[(ActorRef, Tensor)] = None): Receive = {
+             cache: Option[(ActorRef, Tensor, Tensor)] = None): Receive = {
 
-    case Forward(x) =>
+    case Forward(x, y) =>
       val z = activate(x, w, b)
-      next ! Forward(z)
-      context become accept(w, b, Some(sender(), x))
+      next ! Forward(z, y)
+      context become accept(w, b, Some(sender(), x, y))
 
     case Predict(x) =>
       val z = activate(x, w, b)
       next forward Predict(z)
 
     case Backward(dz) if cache isDefined =>
-      val (prev, a) = cache.get
+      val (prev, a, _) = cache.get
 
       val da = w.transpose.dot(dz)
       prev ! Backward(da)
@@ -48,8 +47,6 @@ class LinearGate(shape: Array[Int],
 
       val List(updatedW, updatedB) = optimizer.update(List(w, b), List(dw, db))
       context become accept(updatedW, updatedB, cache)
-
-      // context become accept(w - dw * learningRate, b - db * learningRate, cache)
   }
 
 }
@@ -57,6 +54,4 @@ class LinearGate(shape: Array[Int],
 object LinearGate {
   def props(shape: Array[Int], next: ActorRef, optimizer: Optimizer) =
     Props(new LinearGate(shape, next, optimizer))
-  // def props(shape: Array[Int], next: ActorRef, learningRate: Double) =
-    // Props(new LinearGate(shape, next, learningRate))
 }

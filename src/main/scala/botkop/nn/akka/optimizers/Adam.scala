@@ -16,25 +16,24 @@ case class Adam(shape: Array[Int],
   val vs: List[Tensor] = shapes.map(shape => numsca.zeros(shape))
   val ss: List[Tensor] = shapes.map(shape => numsca.zeros(shape))
 
-  override def update(zs: List[Tensor], dzs: List[Tensor]): List[Tensor] = {
+  override def update(parameters: List[Tensor], gradients: List[Tensor]): List[Tensor] =
     shapes.indices.map { i =>
       val v = vs(i)
       val s = ss(i)
-      val z = zs(i)
-      val dz = dzs(i)
+      val p = parameters(i)
+      val dp = gradients(i)
 
       v *= beta1
-      v += (1 - beta1) * dz
+      v += (1 - beta1) * dp
 
       val vCorrected = v / math.pow(1 - beta1, 2)
 
       s *= beta2
-      s += (1 - beta2) * numsca.square(dz)
+      s += (1 - beta2) * numsca.square(dp)
 
       val sCorrected = s / math.pow(1 - beta2, 2)
 
-      z - learningRate * (vCorrected / (numsca.sqrt(sCorrected) + epsilon))
+      p - learningRate * (vCorrected / (numsca.sqrt(sCorrected) + epsilon))
     } toList
-  }
 
 }

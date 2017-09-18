@@ -4,11 +4,10 @@ import numsca.Tensor
 
 case class GradientDescent(learningRate: Double) extends Optimizer {
 
-  override def update(zs: List[Tensor], dzs: List[Tensor]): List[Tensor] =
-    zs.zip(dzs).map {
+  override def update(parameters: List[Tensor],
+                      gradients: List[Tensor]): List[Tensor] =
+    parameters.zip(gradients).map {
       case (z, dz) =>
         z - dz * learningRate
     }
 }
-
-

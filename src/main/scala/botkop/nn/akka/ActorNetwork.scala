@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import botkop.nn.akka.CostFunctions._
 import botkop.nn.akka.gates._
-import botkop.nn.akka.optimizers.{Adam, GradientDescent}
+import botkop.nn.akka.optimizers._
 import numsca.Tensor
 
 import scala.concurrent.duration._
@@ -26,14 +26,16 @@ object ActorNetwork extends App {
   val yTest =
     readData("data/coursera/catvsnoncat/test_y.csv", Array(1, 50))
 
-  val dimensions = Array(12288, 20, 7, 5, 1)
-  val learningRate = 0.0075
-  // val learningRate = 0.03
-  val numIterations = 2500
+  // val dimensions = Array(12288, 20, 7, 5, 1)
+  val dimensions = Array(12288, 29, 13, 1)
+  // val learningRate = 0.0075
+  val learningRate = 0.01
+  val numIterations = 5000
+  val miniBatchSize = 16
 
   val (input, output) = initialize(dimensions, yTrain, learningRate)
 
-  input ! Forward(xTrain)
+  input ! Forward(xTrain, yTrain)
 
   implicit val timeout: Timeout = Timeout(5 seconds) // needed for `?`
   import system.dispatcher
@@ -64,24 +66,26 @@ object ActorNetwork extends App {
                  learningRate: Double): (ActorRef, ActorRef) = {
 
     val output = system.actorOf(
-      OutputGate.props(y, crossEntropyCost, numIterations))
+      OutputGate.props(crossEntropyCost, numIterations))
 
-    val (_, first) = dimensions.reverse.sliding(2).foldLeft(true, output) {
-      case ((isLast, next), shape) =>
+    val (_, _, first) = dimensions.reverse.sliding(2).foldLeft(true, dimensions.length - 1, output) {
+      case ((isLast, i, next), shape) =>
+
         val nonLinearity =
-          if (isLast) system.actorOf(SigmoidGate.props(next))
-          else system.actorOf(ReluGate.props(next))
+          if (isLast) system.actorOf(SigmoidGate.props(next), s"sigmoid-gate-$i")
+          else system.actorOf(ReluGate.props(next), s"relu-gate-$i")
 
         // val optimizer = GradientDescent(learningRate)
-        val optimizer = Adam(shape, learningRate)
+        //val optimizer = Adam(shape, learningRate)
+        val optimizer = Momentum(shape, learningRate)
 
         (false,
-         // system.actorOf(LinearGate.props(shape, nonLinearity, learningRate))
-         system.actorOf(LinearGate.props(shape, nonLinearity, optimizer))
+         i - 1,
+         system.actorOf(LinearGate.props(shape, nonLinearity, optimizer), s"linear-gate-$i")
         )
     }
 
-    val input = system.actorOf(InputGate.props(first))
+    val input = system.actorOf(InputGate.props(first, miniBatchSize = miniBatchSize))
 
     (input, output)
   }

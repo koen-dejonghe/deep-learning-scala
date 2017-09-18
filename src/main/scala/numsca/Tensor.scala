@@ -110,6 +110,9 @@ class Tensor(val array: INDArray, val isBoolean: Boolean = false) {
     Tensor(d).reshape(t.shape)
   }
 
+  /*
+  this is extremely slow
+   */
   def apply(ranges: Seq[Int]*): Tensor = {
     require(ranges.length == shape.length)
 

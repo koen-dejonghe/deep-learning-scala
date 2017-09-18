@@ -1,28 +1,51 @@
 package botkop.nn.akka.gates
 
 import akka.actor.{Actor, ActorRef, Props}
-import numsca.Tensor
+import numsca._
 
 import scala.language.postfixOps
+import scala.util.Random
 
-class InputGate(first: ActorRef) extends Actor {
+class InputGate(first: ActorRef, miniBatchSize: Int, seed: Long) extends Actor {
+
+  Random.setSeed(seed)
 
   override def receive: Receive = accept()
 
-  def accept(cache: Option[Tensor] = None): Receive = {
-    case Forward(x) =>
-      first ! Forward(x)
-      context.become(accept(Some(x)))
+  def accept(cache: Option[(Tensor, Tensor)] = None): Receive = {
+    case Forward(x, y) =>
+      // for (_ <- 1 to 4)
+        first ! nextBatch(x, y)
+      context.become(accept(Some(x, y)))
 
     case Backward(_) if cache isDefined =>
-      val x = cache.get
-      sender() ! Forward(x)
+      val (x, y) = cache.get
+
+      sender() ! nextBatch(x, y)
 
     case Predict(x) =>
       first forward Predict(x)
   }
+
+  def nextBatch(x: Tensor, y: Tensor): Forward = {
+    val m = x.shape(1)
+    if (miniBatchSize >= m) {
+      Forward(x, y)
+    } else {
+      val samples = Random.shuffle((0 until m).toList).take(miniBatchSize)
+      // this is very slow
+      // Forward(x(:>, samples), y(:>, samples))
+
+      val xb = new Tensor(x.array.getColumns(samples: _*))
+      val yb = new Tensor(y.array.getColumns(samples: _*))
+
+      Forward(xb, yb)
+    }
+  }
+
 }
 
 object InputGate {
-  def props(first: ActorRef) = Props(new InputGate(first))
+  def props(first: ActorRef, miniBatchSize: Int = 64, seed: Long = 231) =
+    Props(new InputGate(first, miniBatchSize, seed))
 }

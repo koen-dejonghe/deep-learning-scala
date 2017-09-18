@@ -11,14 +11,14 @@ class ReluGate(next: ActorRef) extends Actor {
 
   def activate(z: Tensor): Tensor = numsca.maximum(z, 0.0)
 
-  def accept(cache: Option[(ActorRef, Tensor)] = None): Receive = {
-    case Forward(z) =>
+  def accept(cache: Option[(ActorRef, Tensor, Tensor)] = None): Receive = {
+    case Forward(z, y) =>
       val a = activate(z)
-      next ! Forward(a)
-      context become accept(Some(sender(), z))
+      next ! Forward(a, y)
+      context become accept(Some(sender(), z, y))
 
     case Backward(da) if cache isDefined =>
-      val (prev, z) = cache.get
+      val (prev, z, _) = cache.get
       val dz = da * (z > 0.0)
       prev ! Backward(dz)
 

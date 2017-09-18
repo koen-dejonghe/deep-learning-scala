@@ -3,8 +3,7 @@ package botkop.nn.akka.gates
 import akka.actor.{Actor, Props}
 import numsca.Tensor
 
-class OutputGate(y: Tensor,
-                 costFunction: (Tensor, Tensor) => (Double, Tensor),
+class OutputGate(costFunction: (Tensor, Tensor) => (Double, Tensor),
                  numIterations: Int)
     extends Actor {
 
@@ -12,7 +11,7 @@ class OutputGate(y: Tensor,
 
   def accept(i: Int = 0): Receive = {
 
-    case Forward(al) if i < numIterations =>
+    case Forward(al, y) if i < numIterations =>
       val (cost, dal) = costFunction(al, y)
       sender() ! Backward(dal)
 
@@ -22,6 +21,7 @@ class OutputGate(y: Tensor,
       context become accept(i + 1)
 
     case Predict(x) =>
+      /* end of the line: send the answer back */
       sender() ! x
 
   }
@@ -29,8 +29,7 @@ class OutputGate(y: Tensor,
 }
 
 object OutputGate {
-  def props(y: Tensor,
-            costFunction: (Tensor, Tensor) => (Double, Tensor),
+  def props(costFunction: (Tensor, Tensor) => (Double, Tensor),
             numIterations: Int) =
-    Props(new OutputGate(y, costFunction, numIterations))
+    Props(new OutputGate(costFunction, numIterations))
 }
