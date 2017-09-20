@@ -27,7 +27,6 @@ class LinearGate(shape: Array[Int],
              cache: Option[(ActorRef, Tensor, Tensor)] = None): Receive = {
 
     case Forward(x, y) =>
-      println("fwd")
       val z = activate(x, w, b)
       next ! Forward(z, y)
       context become accept(w, b, Some(sender(), x, y))

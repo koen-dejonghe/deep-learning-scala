@@ -19,6 +19,8 @@ class Tensor(val array: INDArray, val isBoolean: Boolean = false) {
   def transpose = new Tensor(array.transpose())
   def T: Tensor = transpose
 
+  def round = Tensor(data.map(math.round(_).toDouble)).reshape(this.shape)
+
   def dot(other: Tensor) = new Tensor(array mmul other.array)
 
   def unary_- : Tensor = new Tensor(array mul -1)

@@ -14,26 +14,23 @@ object CostFunctions {
     (cost.squeeze(), dal)
   }
 
-  def softmaxLoss(x: Tensor, y: Tensor): (Double, Tensor) = {
+  def softmaxCost(xt: Tensor, yt: Tensor): (Double, Tensor) = {
 
-    // val shiftedLogits = x - numsca.max(x, axis = 1)
-    // val z = numsca.sum(numsca.exp(shiftedLogits), axis = 1)
-    // val n = x.shape(0)
-    // val loss = - numsca.sum(logProbs(y)).squeeze() / n
+    val x = xt.T
+    val y = yt.T
 
-    val shiftedLogits = x - numsca.max(x, axis = 0)
-    val z = numsca.sum(numsca.exp(shiftedLogits), axis = 0)
+    val shiftedLogits = x - numsca.max(x, axis = 1)
+    val z = numsca.sum(numsca.exp(shiftedLogits), axis = 1)
     val logProbs = shiftedLogits - numsca.log(z)
     val probs = numsca.exp(logProbs)
-    val m = x.shape(1)
-    val loss = - numsca.sum(logProbs(y)).squeeze() / m
+    val n = x.shape(0)
+    val loss = - numsca.sum(logProbs(y)).squeeze() / n
 
     val dx = probs
     dx.put(y, _ - 1)
-    // dx /= n
-    dx /= m
+    dx /= n
 
-    (loss, dx)
+    (loss, dx.T)
   }
 
 }
