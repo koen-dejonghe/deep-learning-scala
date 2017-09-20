@@ -19,9 +19,12 @@ import scala.language.postfixOps
 object MnistNetwork extends App {
 
   val system = ActorSystem()
+  import system.dispatcher
+
+  // implicit val executionContext = system.dispatchers.lookup("my-dispatcher")
 
   val dimensions = Array(784, 50, 10)
-  val learningRate = 0.1
+  val learningRate = 0.3
   val numIterations = 50000
   val miniBatchSize = 16
   val take = 100
@@ -35,7 +38,6 @@ object MnistNetwork extends App {
 
   input ! Forward(xTrain, yTrain)
 
-  import system.dispatcher
 
   implicit val timeout: Timeout = Timeout(5 seconds) // needed for `?`
 
@@ -56,7 +58,9 @@ object MnistNetwork extends App {
   def accuracy(x: Tensor, y: Tensor): Double = {
     val m = x.shape(1)
     val p = numsca.argmax(x, 0)
-    numsca.sum(p == y).squeeze() / m
+    val acc = numsca.sum(p == y).squeeze() / m
+    println(s"acc = $acc p = " + p + "\n           " + "y = " + y)
+    acc
   }
 
   def initialize(dimensions: Array[Int],

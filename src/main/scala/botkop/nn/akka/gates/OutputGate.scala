@@ -1,11 +1,11 @@
 package botkop.nn.akka.gates
 
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import numsca.Tensor
 
 class OutputGate(costFunction: (Tensor, Tensor) => (Double, Tensor),
                  numIterations: Int)
-    extends Actor {
+    extends Actor with ActorLogging {
 
   override def receive: Receive = accept()
 
@@ -16,14 +16,13 @@ class OutputGate(costFunction: (Tensor, Tensor) => (Double, Tensor),
       sender() ! Backward(dal)
 
       if (i % 100 == 0) {
-        println(s"cost at iteration $i: $cost")
+        log.debug(s"cost at iteration $i: $cost")
       }
       context become accept(i + 1)
 
     case Predict(x) =>
       /* end of the line: send the answer back */
       sender() ! x
-
   }
 
 }
