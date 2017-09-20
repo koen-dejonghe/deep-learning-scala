@@ -12,6 +12,12 @@ class LinearGate(shape: Array[Int],
                  seed: Option[Long] = Some(231))
     extends Actor {
 
+  import org.nd4j.linalg.api.buffer.DataBuffer
+  import org.nd4j.linalg.api.buffer.util.DataTypeUtil
+
+  DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+
+
   if (seed isDefined) numsca.rand.setSeed(seed.get)
 
   override def receive: Receive = {

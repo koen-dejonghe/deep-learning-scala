@@ -2,7 +2,9 @@ package botkop.nn.akka.optimizers
 
 import numsca.Tensor
 
+import scala.collection.mutable
 import scala.language.postfixOps
+
 
 case class Adam(shape: Array[Int],
                 learningRate: Double,
@@ -16,24 +18,32 @@ case class Adam(shape: Array[Int],
   val vs: List[Tensor] = shapes.map(shape => numsca.zeros(shape))
   val ss: List[Tensor] = shapes.map(shape => numsca.zeros(shape))
 
-  override def update(parameters: List[Tensor], gradients: List[Tensor]): List[Tensor] =
+  var t = 1
+
+  override def update(parameters: List[Tensor],
+                      gradients: List[Tensor]): List[Tensor] = {
+
+    t = t + 1
+
     shapes.indices.map { i =>
-      val v = vs(i)
-      val s = ss(i)
+      // val v = vs(i)
+      // val s = ss(i)
       val p = parameters(i)
       val dp = gradients(i)
 
-      v *= beta1
-      v += (1 - beta1) * dp
+      vs(i) *= beta1
+      vs(i) += (1 - beta1) * dp
 
-      val vCorrected = v / math.pow(1 - beta1, 2)
+      val vCorrected = vs(i) / (1 - math.pow(beta1, t))
 
-      s *= beta2
-      s += (1 - beta2) * numsca.square(dp)
+      ss(i) *= beta2
+      ss(i) += (1 - beta2) * numsca.square(dp)
 
-      val sCorrected = s / math.pow(1 - beta2, 2)
+      val sCorrected = ss(i) / (1 - math.pow(beta2, t))
 
-      p - learningRate * (vCorrected / (numsca.sqrt(sCorrected) + epsilon))
+      p + (-learningRate * vCorrected / (numsca.sqrt(sCorrected) + epsilon))
+
     } toList
+  }
 
 }

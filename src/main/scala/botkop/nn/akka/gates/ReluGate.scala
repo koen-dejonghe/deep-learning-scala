@@ -7,6 +7,13 @@ import scala.language.postfixOps
 
 class ReluGate(next: ActorRef) extends Actor {
 
+
+  import org.nd4j.linalg.api.buffer.DataBuffer
+  import org.nd4j.linalg.api.buffer.util.DataTypeUtil
+
+  DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+
+
   override def receive: Receive = accept()
 
   def activate(z: Tensor): Tensor = numsca.maximum(z, 0.0)

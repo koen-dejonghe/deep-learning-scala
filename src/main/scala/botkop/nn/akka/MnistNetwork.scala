@@ -18,13 +18,17 @@ import scala.language.postfixOps
 
 object MnistNetwork extends App {
 
+  import org.nd4j.linalg.api.buffer.DataBuffer
+  import org.nd4j.linalg.api.buffer.util.DataTypeUtil
+
+  DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+
   val system = ActorSystem()
   import system.dispatcher
 
-  // implicit val executionContext = system.dispatchers.lookup("my-dispatcher")
-
   val dimensions = Array(784, 50, 10)
   val learningRate = 0.3
+  // val learningRate = 0.001
   val numIterations = 50000
   val miniBatchSize = 16
   val take = 100
@@ -32,12 +36,9 @@ object MnistNetwork extends App {
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xTest, yTest) = loadData("data/mnist_test.csv.gz", take)
 
-
-
-  val (input, output) = initialize(dimensions, yTrain, learningRate)
+  val (input, output) = initialize(dimensions, learningRate)
 
   input ! Forward(xTrain, yTrain)
-
 
   implicit val timeout: Timeout = Timeout(5 seconds) // needed for `?`
 
@@ -51,7 +52,8 @@ object MnistNetwork extends App {
 
     val tra = (input ? Predict(xTrain)).mapTo[Tensor]
     tra.onComplete { d =>
-      println(s"accuracy on training set: ${accuracy(d.get, yTrain)}")
+      val (cost, _) = softmaxCost(d.get, yTrain)
+      println(s"accuracy on training set: ${accuracy(d.get, yTrain)} cost: $cost")
     }
   }
 
@@ -59,20 +61,19 @@ object MnistNetwork extends App {
     val m = x.shape(1)
     val p = numsca.argmax(x, 0)
     val acc = numsca.sum(p == y).squeeze() / m
-    println(s"acc = $acc p = " + p + "\n           " + "y = " + y)
     acc
   }
 
   def initialize(dimensions: Array[Int],
-                 y: Tensor,
                  learningRate: Double): (ActorRef, ActorRef) = {
 
     val output = system.actorOf(OutputGate.props(softmaxCost, numIterations))
 
-    val (_, _, first) = dimensions.reverse
+    val (_, first) = dimensions.reverse
       .sliding(2)
-      .foldLeft(true, dimensions.length - 1, output) {
-        case ((isLast, i, next), shape) =>
+      .foldLeft(dimensions.length - 1, output) {
+        case ((i, next), shape) =>
+
           val nonLinearity =
             system.actorOf(ReluGate.props(next), s"relu-gate-$i")
 
@@ -80,10 +81,10 @@ object MnistNetwork extends App {
           val optimizer = Momentum(shape, learningRate)
           // val optimizer = Adam(shape, learningRate)
 
-          (false,
-           i - 1,
-           system.actorOf(LinearGate.props(shape, nonLinearity, optimizer),
-                          s"linear-gate-$i"))
+          val linearity =
+            system.actorOf(LinearGate.props(shape, nonLinearity, optimizer), s"linear-gate-$i")
+
+          (i - 1, linearity)
       }
 
     val input =
@@ -119,10 +120,10 @@ object MnistNetwork extends App {
 
     println(s"loading data from $fname: done")
 
-    println(x.shape.toList)
-    println(y.shape.toList)
+    // println(x.shape.toList)
+    // println(y.shape.toList)
 
-    println(y)
+    // println(y)
 
     (x, y)
 
