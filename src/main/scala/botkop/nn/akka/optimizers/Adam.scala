@@ -2,7 +2,6 @@ package botkop.nn.akka.optimizers
 
 import numsca.Tensor
 
-import scala.collection.mutable
 import scala.language.postfixOps
 
 
@@ -47,3 +46,4 @@ case class Adam(shape: Array[Int],
   }
 
 }
+

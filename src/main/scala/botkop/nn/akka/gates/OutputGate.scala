@@ -5,7 +5,8 @@ import numsca.Tensor
 
 class OutputGate(costFunction: (Tensor, Tensor) => (Double, Tensor),
                  numIterations: Int)
-    extends Actor with ActorLogging {
+    extends Actor
+    with ActorLogging {
 
   import org.nd4j.linalg.api.buffer.DataBuffer
   import org.nd4j.linalg.api.buffer.util.DataTypeUtil
@@ -20,7 +21,7 @@ class OutputGate(costFunction: (Tensor, Tensor) => (Double, Tensor),
       val (cost, dal) = costFunction(al, y)
       sender() ! Backward(dal)
 
-      if (i % 100 == 0) {
+      if (i % 1000 == 0) {
         log.debug(s"iteration: $i cost: $cost")
       }
 

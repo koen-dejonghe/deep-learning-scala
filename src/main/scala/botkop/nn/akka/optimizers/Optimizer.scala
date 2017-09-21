@@ -10,5 +10,16 @@ trait Optimizer {
     * @param gradients List of gradients where gradients(0) = gradients of the weights, and gradients(1) = gradients of the biases
     * @return List of updated weights and biases
     */
-  def update(parameters: List[Tensor], gradients: List[Tensor]): List[Tensor]
+  def update(parameters: List[Tensor], gradients: List[Tensor]): (List[Tensor])
+}
+
+trait OptimizerCache
+
+trait Optimizer2[T >: OptimizerCache] {
+
+  def update(
+      parameters: List[Tensor],
+      gradients: List[Tensor],
+      maybeCaches: Option[List[T]]): (List[Tensor], Option[List[T]])
+
 }

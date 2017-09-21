@@ -29,21 +29,23 @@ object MnistNetwork extends App {
   val dimensions = Array(784, 50, 10)
   val learningRate = 0.3
   // val learningRate = 0.001
-  val numIterations = 50000
-  val miniBatchSize = 16
-  val take = 100
+  val regularization = 1e-4
+  val numIterations = 500000
+  val miniBatchSize = 10
+  // val take = Some(1000)
+  val take = None
 
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xTest, yTest) = loadData("data/mnist_test.csv.gz", take)
 
-  val (input, output) = initialize(dimensions, learningRate)
+  val (input, output) = initialize(dimensions, learningRate, regularization)
 
   input ! Forward(xTrain, yTrain)
 
   implicit val timeout: Timeout = Timeout(5 seconds) // needed for `?`
 
   while (true) {
-    Thread.sleep(3000)
+    Thread.sleep(5000)
 
     val ta = (input ? Predict(xTest)).mapTo[Tensor]
     ta.onComplete { d =>
@@ -53,7 +55,8 @@ object MnistNetwork extends App {
     val tra = (input ? Predict(xTrain)).mapTo[Tensor]
     tra.onComplete { d =>
       val (cost, _) = softmaxCost(d.get, yTrain)
-      println(s"accuracy on training set: ${accuracy(d.get, yTrain)} cost: $cost")
+      println(
+        s"accuracy on training set: ${accuracy(d.get, yTrain)} cost: $cost")
     }
   }
 
@@ -65,7 +68,8 @@ object MnistNetwork extends App {
   }
 
   def initialize(dimensions: Array[Int],
-                 learningRate: Double): (ActorRef, ActorRef) = {
+                 learningRate: Double,
+                 regularization: Double): (ActorRef, ActorRef) = {
 
     val output = system.actorOf(OutputGate.props(softmaxCost, numIterations))
 
@@ -73,16 +77,17 @@ object MnistNetwork extends App {
       .sliding(2)
       .foldLeft(dimensions.length - 1, output) {
         case ((i, next), shape) =>
-
           val nonLinearity =
             system.actorOf(ReluGate.props(next), s"relu-gate-$i")
 
           // val optimizer = GradientDescent(learningRate)
-          val optimizer = Momentum(shape, learningRate)
-          // val optimizer = Adam(shape, learningRate)
+          // val optimizer = Momentum(shape, learningRate)
+          val optimizer = Adam(shape, learningRate)
 
           val linearity =
-            system.actorOf(LinearGate.props(shape, nonLinearity, optimizer), s"linear-gate-$i")
+            system.actorOf(
+              LinearGate.props(shape, nonLinearity, regularization, optimizer),
+              s"linear-gate-$i")
 
           (i - 1, linearity)
       }
@@ -97,14 +102,23 @@ object MnistNetwork extends App {
   def gzis(fname: String): GZIPInputStream =
     new GZIPInputStream(new BufferedInputStream(new FileInputStream(fname)))
 
-  def loadData(fname: String, take: Int): (Tensor, Tensor) = {
+  def loadData(fname: String, take: Option[Int] = None): (Tensor, Tensor) = {
 
     println(s"loading data from $fname: start")
 
-    val (xData, yData) = Source
-      .fromInputStream(gzis(fname))
-      .getLines()
-      // .take(take)
+    val lines = take match {
+      case Some(n) =>
+        Source
+          .fromInputStream(gzis(fname))
+          .getLines()
+          .take(n)
+      case None =>
+        Source
+          .fromInputStream(gzis(fname))
+          .getLines()
+    }
+
+    val (xData, yData) = lines
       .foldLeft(List.empty[Double], List.empty[Double]) {
         case ((xs, ys), line) =>
           val tokens = line.split(",")

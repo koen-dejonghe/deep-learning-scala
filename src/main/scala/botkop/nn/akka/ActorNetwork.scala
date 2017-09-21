@@ -81,7 +81,7 @@ object ActorNetwork extends App {
 
         (false,
          i - 1,
-         system.actorOf(LinearGate.props(shape, nonLinearity, optimizer), s"linear-gate-$i")
+         system.actorOf(LinearGate.props(shape, nonLinearity, 0.0, optimizer), s"linear-gate-$i")
         )
     }
 

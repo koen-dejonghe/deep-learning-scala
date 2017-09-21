@@ -8,6 +8,7 @@ import scala.language.postfixOps
 
 class LinearGate(shape: Array[Int],
                  next: ActorRef,
+                 regularization: Double,
                  optimizer: Optimizer,
                  seed: Option[Long] = Some(231))
     extends Actor {
@@ -16,7 +17,6 @@ class LinearGate(shape: Array[Int],
   import org.nd4j.linalg.api.buffer.util.DataTypeUtil
 
   DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
-
 
   if (seed isDefined) numsca.rand.setSeed(seed.get)
 
@@ -34,6 +34,7 @@ class LinearGate(shape: Array[Int],
 
     case Forward(x, y) =>
       val z = activate(x, w, b)
+
       next ! Forward(z, y)
       context become accept(w, b, Some(sender(), x, y))
 
@@ -49,6 +50,11 @@ class LinearGate(shape: Array[Int],
 
       val m = a.shape(1)
       val dw = dz.dot(a.T) / m
+
+      // adjusting regularization, if required
+      if (regularization != 0)
+        dw += regularization * w
+
       val db = numsca.sum(dz, axis = 1) / m
 
       val List(updatedW, updatedB) = optimizer.update(List(w, b), List(dw, db))
@@ -58,6 +64,9 @@ class LinearGate(shape: Array[Int],
 }
 
 object LinearGate {
-  def props(shape: Array[Int], next: ActorRef, optimizer: Optimizer) =
-    Props(new LinearGate(shape, next, optimizer))
+  def props(shape: Array[Int],
+            next: ActorRef,
+            regularization: Double,
+            optimizer: Optimizer) =
+    Props(new LinearGate(shape, next, regularization, optimizer))
 }
