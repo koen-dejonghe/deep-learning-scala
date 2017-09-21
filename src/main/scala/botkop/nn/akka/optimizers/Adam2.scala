@@ -4,15 +4,18 @@ import numsca.Tensor
 
 import scala.language.postfixOps
 
-class Adam2(learningRate: Double,
-            beta1: Double = 0.9,
-            beta2: Double = 0.999,
-            epsilon: Double = 1e-8,
-) extends Optimizer2[AdamCache] {
+case class Adam2(learningRate: Double,
+                 beta1: Double = 0.9,
+                 beta2: Double = 0.999,
+                 epsilon: Double = 1e-8)
+    extends Optimizer2[AdamCache] {
 
-  def localUpdate(x: Tensor,
-                  dx: Tensor,
-                  cache: AdamCache): (Tensor, AdamCache) = {
+  def localUpdate(
+      x: Tensor,
+      dx: Tensor,
+      maybeCache: Option[AdamCache]): (Tensor, Option[AdamCache]) = {
+
+    val cache = if (maybeCache.isEmpty) AdamCache(x.shape) else maybeCache.get
     val nm = beta1 * cache.m + (1 - beta1) * dx
     val mt = nm / (1 - math.pow(beta1, cache.t))
     val nv = beta2 * cache.v + (1 - beta2) * numsca.square(dx)
@@ -20,29 +23,32 @@ class Adam2(learningRate: Double,
 
     val nextX = x + (-learningRate * mt / numsca.sqrt(vt) + epsilon)
     val nextCache = AdamCache(nm, nv, cache.t + 1)
-    (nextX, nextCache)
+    (nextX, Some(nextCache))
   }
 
   override def update(parameters: List[Tensor],
                       gradients: List[Tensor],
-                      maybeCaches: Option[List[AdamCache]])
-    : (List[Tensor], Option[List[AdamCache]]) = {
+                      maybeCaches: List[Option[AdamCache]])
+    : (List[Tensor], List[Option[AdamCache]]) = {
 
-    val caches = if (maybeCaches.isEmpty) parameters.map { p =>
-      numsca.zerosLike(p)
-    } else maybeCaches.get
+    val caches =
+      if (maybeCaches.isEmpty) parameters.map(_ => None) else maybeCaches
 
     val (newXs, newCaches) = parameters
       .zip(gradients)
       .zip(caches)
       .map {
-        case ((x: Tensor, dx: Tensor), cache: AdamCache) =>
+        case ((x, dx), cache) =>
           localUpdate(x, dx, cache)
       }
       .unzip
 
-    (newXs, Some(newCaches))
+    (newXs, newCaches)
   }
 }
 
 case class AdamCache(m: Tensor, v: Tensor, t: Int) extends OptimizerCache
+object AdamCache {
+  def apply(shape: Array[Int]): AdamCache =
+    AdamCache(numsca.zeros(shape), numsca.zeros(shape), 1)
+}

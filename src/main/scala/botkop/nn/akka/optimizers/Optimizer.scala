@@ -20,6 +20,6 @@ trait Optimizer2[T >: OptimizerCache] {
   def update(
       parameters: List[Tensor],
       gradients: List[Tensor],
-      maybeCaches: Option[List[T]]): (List[Tensor], Option[List[T]])
+      maybeCaches: List[Option[T]]): (List[Tensor], List[Option[T]])
 
 }
