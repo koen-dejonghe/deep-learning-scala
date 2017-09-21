@@ -10,7 +10,7 @@ case class Adam2(learningRate: Double,
                  epsilon: Double = 1e-8)
     extends Optimizer2[AdamCache] {
 
-  def localUpdate(
+  override def localUpdate(
       x: Tensor,
       dx: Tensor,
       maybeCache: Option[AdamCache]): (Tensor, Option[AdamCache]) = {
@@ -24,26 +24,6 @@ case class Adam2(learningRate: Double,
     val nextX = x + (-learningRate * mt / numsca.sqrt(vt) + epsilon)
     val nextCache = AdamCache(nm, nv, cache.t + 1)
     (nextX, Some(nextCache))
-  }
-
-  override def update(parameters: List[Tensor],
-                      gradients: List[Tensor],
-                      maybeCaches: List[Option[AdamCache]])
-    : (List[Tensor], List[Option[AdamCache]]) = {
-
-    val caches =
-      if (maybeCaches.isEmpty) parameters.map(_ => None) else maybeCaches
-
-    val (newXs, newCaches) = parameters
-      .zip(gradients)
-      .zip(caches)
-      .map {
-        case ((x, dx), cache) =>
-          localUpdate(x, dx, cache)
-      }
-      .unzip
-
-    (newXs, newCaches)
   }
 }
 
