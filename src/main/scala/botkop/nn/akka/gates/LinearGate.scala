@@ -10,7 +10,7 @@ class LinearGate(shape: Array[Int],
                  next: ActorRef,
                  regularization: Double,
                  optimizer: Optimizer,
-                 seed: Option[Long] = Some(231))
+                 seed: Long = 231)
     extends Actor {
 
   import org.nd4j.linalg.api.buffer.DataBuffer
@@ -18,7 +18,7 @@ class LinearGate(shape: Array[Int],
 
   DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
 
-  if (seed isDefined) numsca.rand.setSeed(seed.get)
+  numsca.rand.setSeed(seed)
 
   override def receive: Receive = {
     val w = numsca.randn(shape) * math.sqrt(2.0 / shape(1))

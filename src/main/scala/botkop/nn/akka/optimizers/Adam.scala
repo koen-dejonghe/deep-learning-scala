@@ -5,28 +5,30 @@ import numsca.Tensor
 import scala.language.postfixOps
 
 
-case class Adam(shape: Array[Int],
-                learningRate: Double,
+case class Adam(learningRate: Double,
                 beta1: Double = 0.9,
                 beta2: Double = 0.999,
                 epsilon: Double = 1e-8)
     extends Optimizer {
 
-  val shapes = List(shape, Array(shape.head, 1))
-
-  val vs: List[Tensor] = shapes.map(shape => numsca.zeros(shape))
-  val ss: List[Tensor] = shapes.map(shape => numsca.zeros(shape))
-
   var t = 1
+
+  var vs = List.empty[Tensor]
+  var ss = List.empty[Tensor]
 
   override def update(parameters: List[Tensor],
                       gradients: List[Tensor]): List[Tensor] = {
 
+    // first time through
+    // create the cache
+    if (t == 1) {
+      vs = parameters.map(numsca.zerosLike)
+      ss = parameters.map(numsca.zerosLike)
+    }
+
     t = t + 1
 
-    shapes.indices.map { i =>
-      // val v = vs(i)
-      // val s = ss(i)
+    parameters.indices.map { i =>
       val p = parameters(i)
       val dp = gradients(i)
 

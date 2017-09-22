@@ -30,6 +30,9 @@ object ActorNetwork extends App {
   val dimensions = Array(12288, 29, 13, 1)
   // val learningRate = 0.0075
   val learningRate = 0.01
+
+  def optimizer = Momentum(learningRate)
+
   val numIterations = 5000
   val miniBatchSize = 16
 
@@ -74,10 +77,6 @@ object ActorNetwork extends App {
         val nonLinearity =
           if (isLast) system.actorOf(SigmoidGate.props(next), s"sigmoid-gate-$i")
           else system.actorOf(ReluGate.props(next), s"relu-gate-$i")
-
-        // val optimizer = GradientDescent(learningRate)
-        //val optimizer = Adam(shape, learningRate)
-        val optimizer = Momentum(shape, learningRate)
 
         (false,
          i - 1,

@@ -26,19 +26,23 @@ object MnistNetwork extends App {
   val system = ActorSystem()
   import system.dispatcher
 
-  val dimensions = Array(784, 50, 10)
-  val learningRate = 0.3
-  // val learningRate = 0.001
+  val dimensions = Array(784, 100, 10)
+  // val learningRate = 0.3
+
+  // def optimizer = Adam(0.001)
+  def optimizer = Momentum(0.3)
+
   val regularization = 1e-4
+  // val regularization = 0.0
   val numIterations = 500000
-  val miniBatchSize = 10
-  // val take = Some(1000)
-  val take = None
+  val miniBatchSize = 16
+  val take = Some(1000)
+  // val take = None
 
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xTest, yTest) = loadData("data/mnist_test.csv.gz", take)
 
-  val (input, output) = initialize(dimensions, learningRate, regularization)
+  val (input, output) = initialize(dimensions, regularization, optimizer)
 
   input ! Forward(xTrain, yTrain)
 
@@ -68,8 +72,8 @@ object MnistNetwork extends App {
   }
 
   def initialize(dimensions: Array[Int],
-                 learningRate: Double,
-                 regularization: Double): (ActorRef, ActorRef) = {
+                 regularization: Double,
+                 optimizer: => Optimizer): (ActorRef, ActorRef) = {
 
     val output = system.actorOf(OutputGate.props(softmaxCost, numIterations))
 
@@ -79,10 +83,6 @@ object MnistNetwork extends App {
         case ((i, next), shape) =>
           val nonLinearity =
             system.actorOf(ReluGate.props(next), s"relu-gate-$i")
-
-          // val optimizer = GradientDescent(learningRate)
-          // val optimizer = Momentum(shape, learningRate)
-          val optimizer = Adam(shape, learningRate)
 
           val linearity =
             system.actorOf(
@@ -127,17 +127,10 @@ object MnistNetwork extends App {
           (x ::: xs, y :: ys)
       }
 
-    println("done reading")
-
     val x = Tensor(xData.toArray).reshape(yData.length, 784).transpose
     val y = Tensor(yData.toArray).reshape(yData.length, 1).transpose
 
     println(s"loading data from $fname: done")
-
-    // println(x.shape.toList)
-    // println(y.shape.toList)
-
-    // println(y)
 
     (x, y)
 

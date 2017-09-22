@@ -2,20 +2,23 @@ package botkop.nn.akka.optimizers
 
 import numsca.Tensor
 
-case class Momentum(shape: Array[Int], learningRate: Double, beta: Double = 0.9)
+case class Momentum(learningRate: Double, beta: Double = 0.9)
     extends Optimizer {
 
-  val shapes = List(shape, Array(shape.head, 1))
-
-  val vs: List[Tensor] = shapes.map(shape => numsca.zeros(shape))
+  var vs = List.empty[Tensor]
 
   override def update(parameters: List[Tensor],
                       gradients: List[Tensor]): List[Tensor] = {
-    parameters.zip(gradients).zip(vs).map {
-      case ((z, dz), v) =>
-        v *= beta
-        v += (1 - beta) * dz
-        z - learningRate * v
+
+    if (vs.isEmpty) {
+      vs = parameters.map(numsca.zerosLike)
+    }
+
+    parameters.zip(gradients).zipWithIndex.map {
+      case ((z, dz), i) =>
+        vs(i) *= beta
+        vs(i) += (1 - beta) * dz
+        z - learningRate * vs(i)
     }
   }
 }

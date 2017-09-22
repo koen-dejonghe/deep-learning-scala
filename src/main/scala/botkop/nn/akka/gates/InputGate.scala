@@ -19,19 +19,19 @@ class InputGate(first: ActorRef, miniBatchSize: Int, seed: Long) extends Actor {
 
   def accept(cache: Option[(Tensor, Tensor)] = None): Receive = {
     case Forward(x, y) =>
-      first ! nextBatch(x, y, 0.0)
+      first ! nextBatch(x, y)
       context.become(accept(Some(x, y)))
 
     case Backward(_) if cache isDefined =>
       val (x, y) = cache.get
 
-      sender() ! nextBatch(x, y, 0.0)
+      sender() ! nextBatch(x, y)
 
     case Predict(x) =>
       first forward Predict(x)
   }
 
-  def nextBatch(x: Tensor, y: Tensor, r: Double): Forward = {
+  def nextBatch(x: Tensor, y: Tensor): Forward = {
     val m = x.shape(1)
     if (miniBatchSize >= m) {
       Forward(x, y)
