@@ -27,22 +27,25 @@ object MnistNetwork extends App {
   import system.dispatcher
 
   val dimensions = Array(784, 100, 10)
-  // val learningRate = 0.3
 
-  // def optimizer = Adam(0.001)
-  def optimizer = Momentum(0.3)
+  // def optimizer = Adam(learningRate = 0.001)
+  def optimizer = Momentum(learningRate = 0.3)
+
+  val costFunction: (Tensor, Tensor) => (Double, Tensor) = softmaxCost
 
   val regularization = 1e-4
   // val regularization = 0.0
+
   val numIterations = 500000
   val miniBatchSize = 16
   val take = Some(1000)
   // val take = None
 
+  val (input, output) =
+    initialize(dimensions, regularization, optimizer, costFunction)
+
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xTest, yTest) = loadData("data/mnist_test.csv.gz", take)
-
-  val (input, output) = initialize(dimensions, regularization, optimizer)
 
   input ! Forward(xTrain, yTrain)
 
@@ -73,9 +76,11 @@ object MnistNetwork extends App {
 
   def initialize(dimensions: Array[Int],
                  regularization: Double,
-                 optimizer: => Optimizer): (ActorRef, ActorRef) = {
+                 optimizer: => Optimizer,
+                 costFunction: (Tensor, Tensor) => (Double, Tensor))
+    : (ActorRef, ActorRef) = {
 
-    val output = system.actorOf(OutputGate.props(softmaxCost, numIterations))
+    val output = system.actorOf(OutputGate.props(costFunction, numIterations))
 
     val (_, first) = dimensions.reverse
       .sliding(2)
