@@ -30,6 +30,7 @@ object MnistNetwork extends App with LazyLogging {
   // so must be recreated for each gate
   // hence this is a function call rather than a value
   def optimizer() = Momentum(learningRate = 0.3)
+  // def optimizer() = Adam(learningRate = 0.001)
 
   val layout = (Linear + Relu) * 2
   val network = layout
