@@ -7,7 +7,7 @@ Still it has some attractive potential, such as asynchronous network gates, whic
 
 **Terminology:** Most neural net books use the term _layer_ for the components of the network. 
 Andrej Karpathy was using _gate_ instead when explaining the [intuition behind backpropagation](http://cs231n.github.io/optimization-2/#intuitive).
-The term stuck and I have been using throughout this project. 
+The term stuck and I have been using it throughout this project. 
 Also, _layer_ suggests that it's tightly coupled to other layers, whereas _gate_ suggests something independent.
 Since the gates in this project are all asynchronously operating actors, I think _gate_ is a more apt name.
 So, read _layer_ when you see _gate_ in case it's unclear.
@@ -81,7 +81,7 @@ A network is composed of gates. Each gate is an actor in the actor system, and a
 #### Forward pass
 The training set is forwarded to the input actor. The input actor takes a random sample of size `miniBatchSize` from the training set, 
 and forwards it to the first gate (which is supposed to be a linear gate). 
-The activation of the gate is forwarded to the next gate. In this example this is a RELU non-linearity. 
+The activation of this gate is forwarded to the next gate. In this example this is a RELU non-linearity. 
 The RELU gate then forwards its activation to the next gate, again a linearity. 
 And so on, until the output gate is reached. 
 The output gate calculates the cost and the derivative of the cost using the provided cost function.
