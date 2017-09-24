@@ -7,30 +7,31 @@ Still it has some attractive potential, such as asynchronous network layers, whi
 
 ### Building a neural net
 Building a net is as simple as specifying the layout of the network, 
-the size of the layers, and some hyperparameters.
-
-See [this example](https://github.com/koen-dejonghe/deep-learning-scala/blob/master/src/main/scala/botkop/nn/akka/MnistNetwork.scala) for more details.
+the size of the layers, and some hyperparameters. 
+(See [this example](https://github.com/koen-dejonghe/deep-learning-scala/blob/master/src/main/scala/botkop/nn/akka/MnistNetwork.scala) for more details.)
 
 ```scala
-  val layout = (Linear + Relu) * 2
-  val dimensions = Array(784, 50, 10)
-  def optimizer = Momentum(learningRate = 0.3)
-  val cost: CostFunction = softmaxCost
-  val regularization = 1e-4
-  val miniBatchSize = 16
+
+  def optimizer() = Momentum(learningRate = 0.3)
   
-   val (input, output) =
-      Network.initialize(layout,
-                         dimensions,
-                         miniBatchSize,
-                         regularization,
-                         optimizer,
-                         cost)
+  val layout = (Linear + Relu) * 2
+  val network = layout
+    .withDimensions(784, 50, 10)
+    .withOptimizer(optimizer)
+    .withCostFunction(softmaxCost)
+    .withRegularization(1e-4)
+    .withMiniBatchSize(16)
+
+  val (input, output) = network.init()
+
 ```
 
 This will create a network with 2 hidden layers, each consisting of a linearity and a RELU nonlinearity, and an output layer.
 The number of nodes in each of the layers is specified by the dimensions array. We will use the momentum optimizer with a learning rate of 0.3.
 To evaluate the cost we use the softmax function, and regularization is set at 1e-4. 
+
+Note that the optimizer is a method, rather than a value. 
+Reason is that the optimizer contains state for the gate it is associated with, and so must be created for each gate.
 
 The initializer returns references to the input and output actor, 
 which are used for sending training and test sets to, and for monitoring.

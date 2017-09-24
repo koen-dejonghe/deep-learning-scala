@@ -26,29 +26,22 @@ object MnistNetwork extends App with LazyLogging {
   val system: ActorSystem = ActorSystem()
   import system.dispatcher
 
+  // the optimizer is an object that contains state,
+  // so must be recreated for each gate
+  // hence this is a function call rather than a value
+  def optimizer() = Momentum(learningRate = 0.3)
+
   val layout = (Linear + Relu) * 2
-  val dimensions = Array(784, 50, 10)
+  val network = layout
+    .withDimensions(784, 50, 10)
+    .withOptimizer(optimizer)
+    .withCostFunction(softmaxCost)
+    .withRegularization(1e-4)
+    .withMiniBatchSize(16)
 
-  // def optimizer = Adam(learningRate = 0.001)
-  def optimizer = Momentum(learningRate = 0.3)
-
-  val cost: CostFunction = softmaxCost
-
-  val regularization = 1e-4
-  // val regularization = 0.0
-
-  val miniBatchSize = 16
-
-  val (input, output) = Network.initialize(layout,
-                                           dimensions,
-                                           miniBatchSize,
-                                           cost,
-                                           optimizer,
-                                           regularization)
+  val (input, output) = network.init()
 
   val take = Some(1000)
-  // val take = None
-
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xTest, yTest) = loadData("data/mnist_test.csv.gz", take)
 
@@ -65,7 +58,7 @@ object MnistNetwork extends App with LazyLogging {
     }
 
     (input ? Predict(xTrain)).mapTo[Tensor].onComplete { d =>
-      val (c, _) = cost(d.get, yTrain)
+      val (c, _) = softmaxCost(d.get, yTrain)
       val a = accuracy(d.get, yTrain)
       logger.info(s"accuracy on training set: $a cost: $c")
     }
