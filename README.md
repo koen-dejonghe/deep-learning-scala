@@ -25,11 +25,11 @@ the size of the layers, and some hyperparameters.
                          cost)
 ```
 
-This will create a network with 2 hidden layers, consisting each of a linearity and a RELU nonlinearity, and an output layer.
+This will create a network with 2 hidden layers, each consisting of a linearity and a RELU nonlinearity, and an output layer.
 The number of nodes in each of the layers is specified by the dimensions array. We will use the momentum optimizer with a learning rate of 0.3.
-To evaluate the cost we use the softmax function, and  
+To evaluate the cost we use the softmax function, and regularization is set at 1e-4. 
 The initializer returns references to the input and output actor, 
-which can be used for sending training and test sets to, and for monitoring respectively.
+which are used for sending training and test sets to, and for monitoring.
 
 ```scala
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz")
@@ -81,8 +81,8 @@ At the input gate, a new sample is taken, and the process starts all over.
 
 ### Background
 
-Everything in ML must be written in Python these days it seems.
-Main culprit for this is in my opinion the excellent numpy library.
+It seems like everything in machine learning must be written in Python these days.
+Main culprit for this in my opinion is the excellent numpy library.
 The numsca package is my futile attempt to mimic some of its most useful functionality.
 It's a thin wrapper around the nd4j N-Dimensional Arrays for Java library (http://nd4j.org/)
 
@@ -132,7 +132,7 @@ In Scala with numsca:
     val correctClassScores = x(y)
     val margins = numsca.maximum(x - correctClassScores + 1.0, 0.0)
     margins.put(y, 0)
-    val loss = numsca.sum(margins).squeeze() / n
+    val loss = numsca.sum(margins) / n
 
     val numPos = numsca.sum(margins > 0, axis = 1)
     val dx = numsca.zerosLike(x)
@@ -144,17 +144,16 @@ In Scala with numsca:
   }
 ```
 
-Numsca can be found at:
-
-https://github.com/koen-dejonghe/deep-learning-scala/tree/master/src/main/scala/numsca
+Numsca can be found [here]( https://github.com/koen-dejonghe/deep-learning-scala/tree/master/src/main/scala/numsca )
 
 ### Credit
 Much of the stuff developed here is a result of some excellent courses I took, most notably: 
 
 - CS231n: Convolutional Neural Networks for Visual Recognition
-  - http://cs231n.github.io/
-  - Python code is at: https://github.com/koen-dejonghe/cs231n
+  - [Notes](http://cs231n.github.io/)
+  - [Classroom videos](https://www.youtube.com/playlist?list=PL70hhrN6k0-CmnEhCnZLVP_0d9XH3edXW)
+  - [Python code](https://github.com/koen-dejonghe/cs231n)
 
 - Coursera's Deep Learning specialization 
-  - https://www.coursera.org/specializations/deep-learning
+  - [https://www.coursera.org/specializations/deep-learning]
 
