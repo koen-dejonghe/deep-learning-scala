@@ -9,8 +9,8 @@ Still it has some attractive potential, such as asynchronous network gates, whic
 Andrej Karpathy was using _gate_ instead when explaining the [intuition behind backpropagation](http://cs231n.github.io/optimization-2/#intuitive).
 The term stuck and I have been using throughout this project. 
 Also, _layer_ suggests that it's tightly coupled to other layers, whereas _gate_ suggests something independent.
-Since the gates in this project are all independent and asynchronously operating actors, I think _gate_ is a more apt name.
-So, read _layer_ when you see _gate_ in case it's not clear.
+Since the gates in this project are all asynchronously operating actors, I think _gate_ is a more apt name.
+So, read _layer_ when you see _gate_ in case it's unclear.
 
 ### Building a neural net
 Building a net is as simple as specifying the layout of the network, 
