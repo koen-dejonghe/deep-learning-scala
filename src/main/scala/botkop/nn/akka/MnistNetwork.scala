@@ -3,105 +3,81 @@ package botkop.nn.akka
 import java.io.{BufferedInputStream, FileInputStream}
 import java.util.zip.GZIPInputStream
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
+import akka.pattern.ask
 import akka.util.Timeout
 import botkop.nn.akka.CostFunctions._
 import botkop.nn.akka.gates._
 import botkop.nn.akka.optimizers._
+import com.typesafe.scalalogging.LazyLogging
 import numsca.Tensor
 
 import scala.concurrent.duration._
-import akka.pattern.ask
-
 import scala.io.Source
 import scala.language.postfixOps
 
-object MnistNetwork extends App {
+object MnistNetwork extends App with LazyLogging {
 
   import org.nd4j.linalg.api.buffer.DataBuffer
   import org.nd4j.linalg.api.buffer.util.DataTypeUtil
 
   DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
 
-  val system = ActorSystem()
+  val system: ActorSystem = ActorSystem()
   import system.dispatcher
 
-  val dimensions = Array(784, 100, 10)
+  val layout = (Linear + Relu) * 2
+  val dimensions = Array(784, 50, 10)
 
   // def optimizer = Adam(learningRate = 0.001)
   def optimizer = Momentum(learningRate = 0.3)
 
-  val costFunction: (Tensor, Tensor) => (Double, Tensor) = softmaxCost
+  val cost: CostFunction = softmaxCost
 
   val regularization = 1e-4
   // val regularization = 0.0
 
-  val numIterations = 500000
   val miniBatchSize = 16
-  val take = Some(1000)
-  // val take = None
 
   val (input, output) =
-    initialize(dimensions, regularization, optimizer, costFunction)
+    Network.initialize(system,
+                       layout,
+                       dimensions,
+                       miniBatchSize,
+                       regularization,
+                       optimizer,
+                       cost)
+
+  val take = Some(1000)
+  // val take = None
 
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xTest, yTest) = loadData("data/mnist_test.csv.gz", take)
 
   input ! Forward(xTrain, yTrain)
 
-  implicit val timeout: Timeout = Timeout(5 seconds) // needed for `?`
+  monitor()
 
-  while (true) {
-    Thread.sleep(5000)
+  def monitor() = system.scheduler.schedule(5 seconds, 5 seconds) {
 
-    val ta = (input ? Predict(xTest)).mapTo[Tensor]
-    ta.onComplete { d =>
-      println(s"accuracy on test set: ${accuracy(d.get, yTest)}")
+    implicit val timeout: Timeout = Timeout(1 second) // needed for `?`
+
+    (input ? Predict(xTest)).mapTo[Tensor].onComplete { d =>
+      logger.info(s"accuracy on test set: ${accuracy(d.get, yTest)}")
     }
 
-    val tra = (input ? Predict(xTrain)).mapTo[Tensor]
-    tra.onComplete { d =>
-      val (cost, _) = softmaxCost(d.get, yTrain)
-      println(
-        s"accuracy on training set: ${accuracy(d.get, yTrain)} cost: $cost")
+    (input ? Predict(xTrain)).mapTo[Tensor].onComplete { d =>
+      val (c, _) = cost(d.get, yTrain)
+      val a = accuracy(d.get, yTrain)
+      logger.info(s"accuracy on training set: $a cost: $c")
     }
   }
 
   def accuracy(x: Tensor, y: Tensor): Double = {
     val m = x.shape(1)
     val p = numsca.argmax(x, 0)
-    val acc = numsca.sum(p == y).squeeze() / m
+    val acc = numsca.sum(p == y) / m
     acc
-  }
-
-  def initialize(dimensions: Array[Int],
-                 regularization: Double,
-                 optimizer: => Optimizer,
-                 costFunction: (Tensor, Tensor) => (Double, Tensor))
-    : (ActorRef, ActorRef) = {
-
-    val output = system.actorOf(OutputGate.props(costFunction, numIterations))
-
-    val (_, first) = dimensions.reverse
-      .sliding(2)
-      .foldLeft(dimensions.length - 1, output) {
-        case ((i, next), shape) =>
-          val nonLinearity =
-            system.actorOf(ReluGate.props(next), s"relu-gate-$i")
-
-          val linearity =
-            system.actorOf(
-              LinearGate.props(shape, nonLinearity, regularization, optimizer),
-              s"linear-gate-$i")
-
-          (i - 1, linearity)
-      }
-
-    val input =
-      system.actorOf(InputGate.props(first, miniBatchSize = miniBatchSize))
-
-    (input, output)
-
   }
 
   def gzis(fname: String): GZIPInputStream =
@@ -109,7 +85,7 @@ object MnistNetwork extends App {
 
   def loadData(fname: String, take: Option[Int] = None): (Tensor, Tensor) = {
 
-    println(s"loading data from $fname: start")
+    logger.info(s"loading data from $fname: start")
 
     val lines = take match {
       case Some(n) =>
@@ -135,7 +111,7 @@ object MnistNetwork extends App {
     val x = Tensor(xData.toArray).reshape(yData.length, 784).transpose
     val y = Tensor(yData.toArray).reshape(yData.length, 1).transpose
 
-    println(s"loading data from $fname: done")
+    logger.info(s"loading data from $fname: done")
 
     (x, y)
 

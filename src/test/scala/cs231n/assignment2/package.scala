@@ -25,7 +25,7 @@ package object assignment2 {
       val neg = f(x)
 
       x.put(ix, oldVal)
-      val g = (numsca.sum((pos - neg) * df) / (2.0 * h)).squeeze()
+      val g = numsca.sum((pos - neg) * df) / (2.0 * h)
       grad.put(ix, g)
     }
     grad

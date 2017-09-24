@@ -15,6 +15,14 @@ libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.3" % "test"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.4"
 
+// https://mvnrepository.com/artifact/com.typesafe.scala-logging/scala-logging_2.11
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2"
+
+// https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
+
+
+
 
 //javaOptions in run += "-Dscala.concurrent.context.minThreads=8"
 //javaOptions in run += "-Dscala.concurrent.context.maxThreads=16"

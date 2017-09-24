@@ -370,7 +370,7 @@ object LLayeredNet {
     val p = probas > 0.5
 
     val accuracy = numsca.sum(p == y) / m
-    accuracy.squeeze()
+    accuracy
   }
 
 }

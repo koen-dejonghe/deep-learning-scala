@@ -1,4 +1,58 @@
 
+# Deep Learning with Scala
+
+This project contains a blueprint for easy development of deep neural networks with Scala and Akka.
+Focus is on elegance and simplicity rather than performance. 
+Still it has some attractive potential, such as asynchronous network layers, which could be deployed on a cluster of machines.
+
+### Building a neural net
+Building a net is as simple as specifying the layout of the network, 
+the size of the layers, and some hyperparameters.
+```scala
+  val layout = (Linear + Relu) * 2
+  val dimensions = Array(784, 50, 10)
+
+  def optimizer = Momentum(learningRate = 0.3)
+
+  val cost: CostFunction = softmaxCost
+
+  val regularization = 1e-4
+
+  val numIterations = 500000
+  val miniBatchSize = 16
+  
+   val (input, output) =
+      Network.initialize(system,
+                         layout,
+                         dimensions,
+                         miniBatchSize,
+                         regularization,
+                         optimizer,
+                         cost)
+```
+
+
+
+
+--- 
+
+
+
+
+* python vs scala
+* no deep learning frameworks for scala
+* numsca
+* async neural net framework with akka
+  * pros:
+    * monitoring & tuning of individual layers by means of messaging
+    * monitoring & tuning of network by means of messaging
+    * inception during training, so possibility for endless training
+    * easy integration in play framework
+    * brain also works async
+    * possibility to deploy in cluster
+    * allows for easy and crazy experiments 
+
+* courses
 
 Scala implementation of assignments of some courses:
 

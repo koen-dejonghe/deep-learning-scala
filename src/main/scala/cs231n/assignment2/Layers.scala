@@ -110,7 +110,7 @@ object Layers {
     val correctClassScores = x(y)
     val margins = numsca.maximum(x - correctClassScores + 1.0, 0.0)
     margins.put(y, 0)
-    val loss = numsca.sum(margins).squeeze() / n
+    val loss = numsca.sum(margins) / n
 
     val numPos = numsca.sum(margins > 0, axis = 1)
     val dx = numsca.zerosLike(x)
@@ -141,7 +141,7 @@ object Layers {
     val logProbs = shiftedLogits - numsca.log(z)
     val probs = numsca.exp(logProbs)
     val n = x.shape(0)
-    val loss = - numsca.sum(logProbs(y)).squeeze() / n
+    val loss = - numsca.sum(logProbs(y)) / n
 
     val dx = probs
     dx.put(y, _ - 1)

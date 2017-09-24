@@ -2,7 +2,10 @@ package botkop.nn.akka
 
 import numsca.Tensor
 
+
 object CostFunctions {
+
+  type CostFunction = (Tensor, Tensor) => (Double, Tensor)
 
   def crossEntropyCost(yHat: Tensor, y: Tensor): (Double, Tensor) = {
     val m = y.shape(1)
@@ -24,7 +27,7 @@ object CostFunctions {
     val logProbs = shiftedLogits - numsca.log(z)
     val probs = numsca.exp(logProbs)
     val n = x.shape(0)
-    val loss = - numsca.sum(logProbs(y)).squeeze() / n
+    val loss = - numsca.sum(logProbs(y)) / n
 
     val dx = probs
     dx.put(y, _ - 1)

@@ -61,7 +61,7 @@ object ActorNetwork extends App {
   def accuracy(x: Tensor, y: Tensor): Double = {
     val m = x.shape(1)
     val p = x > 0.5
-    numsca.sum(p == y).squeeze() / m
+    numsca.sum(p == y) / m
   }
 
   def initialize(dimensions: Array[Int],

@@ -60,7 +60,7 @@ package object numsca {
   def min(t: Tensor, axis: Int): Tensor = new Tensor(Nd4j.min(t.array, axis))
 
   def sum(t: Tensor, axis: Int): Tensor = new Tensor(Nd4j.sum(t.array, axis))
-  def sum(t: Tensor): Tensor = new Tensor(Nd4j.sum(t.array))
+  def sum(t: Tensor): Double = Nd4j.sum(t.array).getDouble(0, 0)
 
   def arange(end: Double): Tensor = new Tensor(Nd4j.arange(end))
   def arange(start: Double, end: Double): Tensor =

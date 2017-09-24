@@ -194,7 +194,7 @@ object OptUtils {
     // convert probas to 0/1 predictions
     val p = probas > 0.5
 
-    val accuracy = sum(p == y).squeeze() / m
+    val accuracy = sum(p == y) / m
     (accuracy, p)
   }
 
