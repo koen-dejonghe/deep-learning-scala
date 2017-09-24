@@ -5,9 +5,17 @@ This project contains a blueprint for easy development of deep neural networks w
 Focus is on elegance and simplicity rather than performance. 
 Still it has some attractive potential, such as asynchronous network layers, which could be deployed on a cluster of machines.
 
+**Terminology:** Most neural net books use the term _layer_ for the components of the network. 
+Andrej Karpathy was using _gate_ instead when explaining the intuintion behind backpropagation [here](http://cs231n.github.io/optimization-2/#intuitive)  
+The term stuck with me and I have been using throughout this project. 
+Also, the term layer suggests that it's tightly coupled to other layers, whereas the term gate suggests something more independent.
+Since the gates here are all independent and asynchronously operating actors, I think _gate_ is a more apt name.
+So, read _layer_ when you seen _gate_ in case it's not clear.
+
+
 ### Building a neural net
 Building a net is as simple as specifying the layout of the network, 
-the size of the layers, and some hyperparameters. 
+the size of the gates (number of nodes), and some hyperparameters. 
 (See [this example](https://github.com/koen-dejonghe/deep-learning-scala/blob/master/src/main/scala/botkop/nn/akka/MnistNetwork.scala) for more details.)
 
 ```scala
