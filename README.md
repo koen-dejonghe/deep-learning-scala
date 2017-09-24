@@ -33,8 +33,8 @@ the size of the gates (number of nodes), and some hyperparameters.
 
 ```
 
-This will create a network with 2 gates (hidden layers), each consisting of a linearity and a RELU nonlinearity.
-The number of nodes in each of the layers is specified by the dimensions array. We will use the momentum optimizer with a learning rate of 0.3.
+This creates a network of 4 gates, a sequence of a linearity followed by a RELU non-linearity followed by a linearity followed by a RELU non-linearity.
+The number of nodes in each of the gates is specified by the dimensions array. We use the momentum optimizer with a learning rate of 0.3.
 To evaluate the cost we use the softmax function, and regularization is set at 1e-4. 
 
 Note that the optimizer is a method, rather than a value. 
