@@ -24,7 +24,12 @@ the size of the layers, and some hyperparameters.
                          optimizer,
                          cost)
 ```
-The initializer returns references to the input and output actor, which can be used for sending training and test sets to and monitoring respectively.
+
+This will create a network with 2 hidden layers, consisting each of a linearity and a RELU nonlinearity, and an output layer.
+The number of nodes in each of the layers is specified by the dimensions array. We will use the momentum optimizer with a learning rate of 0.3.
+To evaluate the cost we use the softmax function, and  
+The initializer returns references to the input and output actor, 
+which can be used for sending training and test sets to, and for monitoring respectively.
 
 ```scala
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz")
@@ -32,7 +37,8 @@ The initializer returns references to the input and output actor, which can be u
   input ! Forward(xTrain, yTrain)
 
 ```
-To monitor progress, you could use a function like the following, which sends a Predict request for the test and training set through the network every 5 seconds,
+To monitor progress, you could use a function like the following, 
+which sends a Predict request for the test and training set through the network every 5 seconds,
 and evaluates the accuracy and the cost (the latter only in case of a prediction on the training set).
 ```scala
   def monitor() = system.scheduler.schedule(5 seconds, 5 seconds) {
@@ -57,18 +63,23 @@ and evaluates the accuracy and the cost (the latter only in case of a prediction
   }
 ```
 
---- 
+### How does it work
+A network is composed of gates (layers). Each gate is an actor in the actor system, and as such runs asynchronously in its own thread.
 
+#### Forward pass
+The training set is forwarded to the input actor. The input actor takes a random sample of size `miniBatchSize` from the training set, 
+and forwards it to the first gate (which is supposed to be a linear gate). 
+The activation function forwards it to the next gate, in this example, a RELU non-linearity. 
+The RELU gate then forwards its activation to the next layer, again a linearity. 
+And so on, until the output gate is reached. 
+The output gate calculates the cost and the derivative of the cost using the provided cost function.
 
-Scala implementation of assignments of some courses:
+#### Backward pass
+The derivative of the cost is fed back to the last layer, which calculates the gradient and passes this again to the gate before it.
+And so on, until the input gate is reached.
+At the input gate, a new sample is taken, and the process starts all over.
 
-- CS231n: Convolutional Neural Networks for Visual Recognition
-  - http://cs231n.github.io/
-  - Python code is at: https://github.com/koen-dejonghe/cs231n
-
-- Coursera's Deep Learning specialization 
-  - https://www.coursera.org/specializations/deep-learning
-
+### Background
 
 Everything in ML must be written in Python these days it seems.
 Main culprit for this is in my opinion the excellent numpy library.
@@ -136,3 +147,14 @@ In Scala with numsca:
 Numsca can be found at:
 
 https://github.com/koen-dejonghe/deep-learning-scala/tree/master/src/main/scala/numsca
+
+### Credit
+Much of the stuff developed here is a result of some excellent courses I took, most notably: 
+
+- CS231n: Convolutional Neural Networks for Visual Recognition
+  - http://cs231n.github.io/
+  - Python code is at: https://github.com/koen-dejonghe/cs231n
+
+- Coursera's Deep Learning specialization 
+  - https://www.coursera.org/specializations/deep-learning
+

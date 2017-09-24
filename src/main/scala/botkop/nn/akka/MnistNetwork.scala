@@ -42,9 +42,9 @@ object MnistNetwork extends App with LazyLogging {
   val (input, output) = Network.initialize(layout,
                                            dimensions,
                                            miniBatchSize,
-                                           regularization,
+                                           cost,
                                            optimizer,
-                                           cost)
+                                           regularization)
 
   val take = Some(1000)
   // val take = None

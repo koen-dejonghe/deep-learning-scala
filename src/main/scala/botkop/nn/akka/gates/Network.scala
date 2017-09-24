@@ -2,7 +2,7 @@ package botkop.nn.akka.gates
 
 import akka.actor.{ActorRef, ActorSystem}
 import botkop.nn.akka.CostFunctions.CostFunction
-import botkop.nn.akka.optimizers.Optimizer
+import botkop.nn.akka.optimizers.{GradientDescent, Optimizer}
 
 sealed trait Layer {
   def +(other: Layer): Network = Network(List(this, other))
@@ -32,9 +32,9 @@ object Network {
   def initialize(layout: Network,
                  dimensions: Array[Int],
                  miniBatchSize: Int,
-                 regularization: Double,
-                 optimizer: => Optimizer,
                  costFunction: CostFunction,
+                 optimizer: => Optimizer,
+                 regularization: Double = 0.0,
                  numIterations: Int = Int.MaxValue): (ActorRef, ActorRef) = {
 
     val system: ActorSystem = ActorSystem()
