@@ -8,6 +8,9 @@ Still it has some attractive potential, such as asynchronous network layers, whi
 ### Building a neural net
 Building a net is as simple as specifying the layout of the network, 
 the size of the layers, and some hyperparameters.
+
+See [this example](https://github.com/koen-dejonghe/deep-learning-scala/blob/master/src/main/scala/botkop/nn/akka/MnistNetwork.scala) for more details.
+
 ```scala
   val layout = (Linear + Relu) * 2
   val dimensions = Array(784, 50, 10)
@@ -28,6 +31,7 @@ the size of the layers, and some hyperparameters.
 This will create a network with 2 hidden layers, each consisting of a linearity and a RELU nonlinearity, and an output layer.
 The number of nodes in each of the layers is specified by the dimensions array. We will use the momentum optimizer with a learning rate of 0.3.
 To evaluate the cost we use the softmax function, and regularization is set at 1e-4. 
+
 The initializer returns references to the input and output actor, 
 which are used for sending training and test sets to, and for monitoring.
 
@@ -154,6 +158,5 @@ Much of the stuff developed here is a result of some excellent courses I took, m
   - [Classroom videos](https://www.youtube.com/playlist?list=PL70hhrN6k0-CmnEhCnZLVP_0d9XH3edXW)
   - [Python code](https://github.com/koen-dejonghe/cs231n)
 
-- Coursera's Deep Learning specialization 
-  - [https://www.coursera.org/specializations/deep-learning]
+- [Deep Learning specialization on Coursera](https://www.coursera.org/specializations/deep-learning)
 

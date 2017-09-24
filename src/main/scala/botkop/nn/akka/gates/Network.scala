@@ -2,7 +2,7 @@ package botkop.nn.akka.gates
 
 import akka.actor.{ActorRef, ActorSystem}
 import botkop.nn.akka.CostFunctions.CostFunction
-import botkop.nn.akka.optimizers.{GradientDescent, Optimizer}
+import botkop.nn.akka.optimizers.Optimizer
 
 sealed trait Layer {
   def +(other: Layer): Network = Network(List(this, other))
