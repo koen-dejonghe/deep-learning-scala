@@ -1,64 +1,18 @@
 
-# Deep Learning with Scala
+* python vs scala
+* no deep learning frameworks for scala
+* numsca
+* async neural net framework with akka
+  * pros:
+    * monitoring & tuning of individual layers by means of messaging
+    * monitoring & tuning of network by means of messaging
+    * inception during training, so possibility for endless training
+    * easy integration in play framework
+    * brain also works async
+    * possibility to deploy in cluster
+    * allows for easy and crazy experiments 
 
-This project contains a blueprint for easy development of deep neural networks with Scala and Akka.
-Focus is on elegance and simplicity rather than performance. 
-Still it has some attractive potential, such as asynchronous network layers, which could be deployed on a cluster of machines.
-
-### Building a neural net
-Building a net is as simple as specifying the layout of the network, 
-the size of the layers, and some hyperparameters.
-```scala
-  val layout = (Linear + Relu) * 2
-  val dimensions = Array(784, 50, 10)
-  def optimizer = Momentum(learningRate = 0.3)
-  val cost: CostFunction = softmaxCost
-  val regularization = 1e-4
-  val miniBatchSize = 16
-  
-   val (input, output) =
-      Network.initialize(layout,
-                         dimensions,
-                         miniBatchSize,
-                         regularization,
-                         optimizer,
-                         cost)
-```
-The initializer returns references to the input and output actor, which can be used for sending training and test sets to and monitoring respectively.
-
-```scala
-  val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz")
-
-  input ! Forward(xTrain, yTrain)
-
-```
-To monitor progress, you could use a function like the following, which sends a Predict request for the test and training set through the network every 5 seconds,
-and evaluates the accuracy and the cost (the latter only in case of a prediction on the training set).
-```scala
-  def monitor() = system.scheduler.schedule(5 seconds, 5 seconds) {
-
-    implicit val timeout: Timeout = Timeout(1 second) // needed for `?`
-
-    (input ? Predict(xTest)).mapTo[Tensor].onComplete { d =>
-      logger.info(s"accuracy on test set: ${accuracy(d.get, yTest)}")
-    }
-
-    (input ? Predict(xTrain)).mapTo[Tensor].onComplete { d =>
-      val (c, _) = cost(d.get, yTrain)
-      val a = accuracy(d.get, yTrain)
-      logger.info(s"accuracy on training set: $a cost: $c")
-    }
-  }
-
-  def accuracy(x: Tensor, y: Tensor): Double = {
-    val m = x.shape(1)
-    val p = numsca.argmax(x, 0)
-    numsca.sum(p == y) / m
-  }
-```
-
---- 
-
+* courses
 
 Scala implementation of assignments of some courses:
 

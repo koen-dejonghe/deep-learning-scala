@@ -29,14 +29,15 @@ case class Network(gates: List[Layer]) {
 
 object Network {
 
-  def initialize(system: ActorSystem,
-                 layout: Network,
+  def initialize(layout: Network,
                  dimensions: Array[Int],
                  miniBatchSize: Int,
                  regularization: Double,
                  optimizer: => Optimizer,
                  costFunction: CostFunction,
                  numIterations: Int = Int.MaxValue): (ActorRef, ActorRef) = {
+
+    val system: ActorSystem = ActorSystem()
 
     val numLinearGates = layout.gates.count(g => g == Linear)
     require(numLinearGates == dimensions.length - 1)
