@@ -76,27 +76,27 @@ and evaluates the accuracy and the cost (the latter only in case of a prediction
 ```
 
 ### How does it work
-A network is composed of gates. Each gate is an actor in the actor system, and as such runs asynchronously in its own thread.
+A network is composed of gates. Each gate is an actor in the actor system, and as such runs asynchronously in its own thread pool.
 
 #### Forward pass
 The training set is forwarded to the input actor. The input actor takes a random sample of size `miniBatchSize` from the training set, 
 and forwards it to the first gate (which is supposed to be a linear gate). 
-The activation function forwards it to the next gate, in this example, a RELU non-linearity. 
+The activation of the gate is forwarded to the next gate. In this example this is a RELU non-linearity. 
 The RELU gate then forwards its activation to the next gate, again a linearity. 
 And so on, until the output gate is reached. 
 The output gate calculates the cost and the derivative of the cost using the provided cost function.
 
 #### Backward pass
-The derivative of the cost is fed back to the last gate, which calculates the gradient and passes this again to the gate before it.
+The derivative of the cost is fed back to the last gate, which calculates the gradient and passes this in turn to the gate before it.
 And so on, until the input gate is reached.
 At the input gate, a new sample is taken, and the process starts all over.
 
 ### Background
 
-It seems like everything in machine learning must be written in Python these days.
+It seems like everything in machine learning these days must be written in Python.
 Main culprit for this in my opinion is the excellent numpy library.
 The numsca package is my futile attempt to mimic some of its most useful functionality.
-It's a thin wrapper around the nd4j N-Dimensional Arrays for Java library (http://nd4j.org/)
+It's a thin wrapper around the [nd4j N-Dimensional Arrays for Java library](http://nd4j.org/)
 
 I think the result is quite elegant.
 For example, check out the following code:
@@ -156,7 +156,7 @@ In Scala with numsca:
   }
 ```
 
-Numsca can be found [here]( https://github.com/koen-dejonghe/deep-learning-scala/tree/master/src/main/scala/numsca )
+Numsca lives [here]( https://github.com/koen-dejonghe/deep-learning-scala/tree/master/src/main/scala/numsca ) for now.
 
 ### Credit
 Much of the stuff developed here is a result of some excellent courses I took, most notably: 
