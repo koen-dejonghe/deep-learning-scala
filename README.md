@@ -3,15 +3,14 @@
 
 This project contains a blueprint for easy development of deep neural networks with Scala and Akka.
 Focus is on elegance and simplicity rather than performance. 
-Still it has some attractive potential, such as asynchronous network layers, which could be deployed on a cluster of machines.
+Still it has some attractive potential, such as asynchronous network gates, which could be deployed on a cluster of machines.
 
 **Terminology:** Most neural net books use the term _layer_ for the components of the network. 
-Andrej Karpathy was using _gate_ instead when explaining the intuintion behind backpropagation [here](http://cs231n.github.io/optimization-2/#intuitive)  
-The term stuck with me and I have been using throughout this project. 
-Also, the term layer suggests that it's tightly coupled to other layers, whereas the term gate suggests something more independent.
-Since the gates here are all independent and asynchronously operating actors, I think _gate_ is a more apt name.
-So, read _layer_ when you seen _gate_ in case it's not clear.
-
+Andrej Karpathy was using _gate_ instead when explaining the [intuition behind backpropagation](http://cs231n.github.io/optimization-2/#intuitive).
+The term stuck and I have been using throughout this project. 
+Also, _layer_ suggests that it's tightly coupled to other layers, whereas _gate_ suggests something independent.
+Since the gates in this project are all independent and asynchronously operating actors, I think _gate_ is a more apt name.
+So, read _layer_ when you see _gate_ in case it's not clear.
 
 ### Building a neural net
 Building a net is as simple as specifying the layout of the network, 
@@ -34,7 +33,7 @@ the size of the gates (number of nodes), and some hyperparameters.
 
 ```
 
-This will create a network with 2 hidden layers, each consisting of a linearity and a RELU nonlinearity, and an output layer.
+This will create a network with 2 gates (hidden layers), each consisting of a linearity and a RELU nonlinearity.
 The number of nodes in each of the layers is specified by the dimensions array. We will use the momentum optimizer with a learning rate of 0.3.
 To evaluate the cost we use the softmax function, and regularization is set at 1e-4. 
 
@@ -77,18 +76,18 @@ and evaluates the accuracy and the cost (the latter only in case of a prediction
 ```
 
 ### How does it work
-A network is composed of gates (layers). Each gate is an actor in the actor system, and as such runs asynchronously in its own thread.
+A network is composed of gates. Each gate is an actor in the actor system, and as such runs asynchronously in its own thread.
 
 #### Forward pass
 The training set is forwarded to the input actor. The input actor takes a random sample of size `miniBatchSize` from the training set, 
 and forwards it to the first gate (which is supposed to be a linear gate). 
 The activation function forwards it to the next gate, in this example, a RELU non-linearity. 
-The RELU gate then forwards its activation to the next layer, again a linearity. 
+The RELU gate then forwards its activation to the next gate, again a linearity. 
 And so on, until the output gate is reached. 
 The output gate calculates the cost and the derivative of the cost using the provided cost function.
 
 #### Backward pass
-The derivative of the cost is fed back to the last layer, which calculates the gradient and passes this again to the gate before it.
+The derivative of the cost is fed back to the last gate, which calculates the gradient and passes this again to the gate before it.
 And so on, until the input gate is reached.
 At the input gate, a new sample is taken, and the process starts all over.
 
