@@ -29,9 +29,10 @@ object MnistNetwork extends App with LazyLogging {
   // the optimizer is an object that contains state,
   // so must be recreated for each gate
   // hence this is a function call rather than a value
-  def optimizer() = Momentum(learningRate = 0.3)
-  // def optimizer() = Adam(learningRate = 0.001)
+  // def optimizer() = Momentum(learningRate = 0.3)
+  def optimizer() = Adam(learningRate = 0.0001)
 
+  /*
   val layout = (Linear + Relu) * 2
   val network = layout
     .withDimensions(784, 50, 10)
@@ -42,7 +43,20 @@ object MnistNetwork extends App with LazyLogging {
 
   val (input, output) = network.init()
 
-  val take = Some(1000)
+   */
+
+  val (input, output) =
+    ((Linear + Relu) * 2)
+      .withDimensions(784, 50, 10)
+      .withOptimizer(optimizer)
+      .withCostFunction(softmaxCost)
+      .withRegularization(1e-5)
+      .withMiniBatchSize(16)
+      .init()
+
+  // val take = Some(1000)
+  val take = None
+
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xTest, yTest) = loadData("data/mnist_test.csv.gz", take)
 
