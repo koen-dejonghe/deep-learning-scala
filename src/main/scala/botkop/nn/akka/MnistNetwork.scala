@@ -1,6 +1,6 @@
 package botkop.nn.akka
 
-import java.io.{BufferedInputStream, FileInputStream}
+import java.io._
 import java.util.zip.GZIPInputStream
 
 import akka.actor.ActorSystem
@@ -15,6 +15,7 @@ import numsca.Tensor
 import scala.concurrent.duration._
 import scala.io.Source
 import scala.language.postfixOps
+import scala.reflect.io.Path
 
 object MnistNetwork extends App with LazyLogging {
 
@@ -58,18 +59,35 @@ object MnistNetwork extends App with LazyLogging {
   val take = None
 
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
-  val (xTest, yTest) = loadData("data/mnist_test.csv.gz", take)
+  val (xDev, yDev) = loadData("data/mnist_test.csv.gz", take)
+
+  val xTest =
+    readData("data/mnist-kaggle-test.csv", Array(28000, 784)).transpose
 
   input ! Forward(xTrain, yTrain)
 
   monitor()
 
+  implicit val timeout: Timeout = Timeout(1 second) // needed for `?`
+  scala.io.StdIn.readLine()
+
+  (input ? Predict(xTest)).mapTo[Tensor].onComplete { d =>
+    val p = numsca.argmax(d.get, 0)
+    val writer = new BufferedWriter(
+      new OutputStreamWriter(
+        new FileOutputStream("kaggle-mnist-submission.csv")))
+
+    p.data.zipWithIndex.foreach{ case (d, i) =>
+      writer.write(s"${i+1},${d.toInt}\n")
+    }
+
+    writer.close()
+  }
+
   def monitor() = system.scheduler.schedule(5 seconds, 5 seconds) {
 
-    implicit val timeout: Timeout = Timeout(1 second) // needed for `?`
-
-    (input ? Predict(xTest)).mapTo[Tensor].onComplete { d =>
-      logger.info(s"accuracy on test set: ${accuracy(d.get, yTest)}")
+    (input ? Predict(xDev)).mapTo[Tensor].onComplete { d =>
+      logger.info(s"accuracy on test set: ${accuracy(d.get, yDev)}")
     }
 
     (input ? Predict(xTrain)).mapTo[Tensor].onComplete { d =>
@@ -121,6 +139,16 @@ object MnistNetwork extends App with LazyLogging {
 
     (x, y)
 
+  }
+
+  def readData(fileName: String, shape: Array[Int]): Tensor = {
+    val data = Source
+      .fromFile(fileName)
+      .getLines()
+      .map(_.split(",").map(_.toDouble / 255.0))
+      .flatten
+      .toArray
+    Tensor(data).reshape(shape)
   }
 
 }

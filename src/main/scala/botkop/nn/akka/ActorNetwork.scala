@@ -98,6 +98,7 @@ object ActorNetwork extends App {
       .toArray
     Tensor(data).reshape(shape)
   }
+
 }
 
 
