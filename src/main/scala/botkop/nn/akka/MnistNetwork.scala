@@ -15,7 +15,6 @@ import numsca.Tensor
 import scala.concurrent.duration._
 import scala.io.Source
 import scala.language.postfixOps
-import scala.reflect.io.Path
 
 object MnistNetwork extends App with LazyLogging {
 
@@ -32,6 +31,8 @@ object MnistNetwork extends App with LazyLogging {
   // hence this is a function call rather than a value
   def optimizer() = Nesterov(learningRate = 0.1)
   // def optimizer() = Adam(learningRate = 0.0001)
+
+  // def optimizer() = GradientDescent(learningRate = 0.3)
 
   /*
   val layout = (Linear + Relu) * 2
@@ -91,7 +92,7 @@ object MnistNetwork extends App with LazyLogging {
     }
   }
 
-  def monitor() = system.scheduler.schedule(10 seconds, 10 seconds) {
+  def monitor() = system.scheduler.schedule(5 seconds, 5 seconds) {
 
     (input ? Predict(xDev)).mapTo[Tensor].onComplete { d =>
       logger.info(s"accuracy on test set: ${accuracy(d.get, yDev)}")

@@ -14,6 +14,11 @@ import scala.language.postfixOps
 
 object ActorNetwork extends App {
 
+  import org.nd4j.linalg.api.buffer.DataBuffer
+  import org.nd4j.linalg.api.buffer.util.DataTypeUtil
+
+  DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+
   val system = ActorSystem()
 
   val xTrain =

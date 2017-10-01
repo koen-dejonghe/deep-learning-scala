@@ -12,7 +12,7 @@ case class Nesterov(var learningRate: Double,
   var vs = List.empty[Tensor]
 
   override def update(parameters: List[Tensor],
-                      gradients: List[Tensor]): List[Tensor] = {
+                      gradients: List[Tensor]): Unit = {
 
     if (vs.isEmpty) {
       vs = parameters.map(numsca.zerosLike)
@@ -20,15 +20,15 @@ case class Nesterov(var learningRate: Double,
 
     learningRate *= learningRateDecay
 
-    parameters.indices.map { i =>
+    parameters.indices.foreach { i =>
       update(parameters(i), gradients(i), vs(i))
-    } toList
+    }
   }
 
-  def update(x: Tensor, dx: Tensor, v: Tensor): Tensor = {
+  def update(x: Tensor, dx: Tensor, v: Tensor): Unit = {
     val vPrev = v
     v *= beta
     v -= learningRate * dx
-    x + (-beta * vPrev) + (1 + beta) * v
+    x += (-beta * vPrev) + (1 + beta) * v
   }
 }

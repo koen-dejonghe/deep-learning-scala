@@ -5,9 +5,9 @@ import numsca.Tensor
 case class GradientDescent(learningRate: Double) extends Optimizer {
 
   override def update(parameters: List[Tensor],
-                      gradients: List[Tensor]): List[Tensor] =
-    parameters.zip(gradients).map {
+                      gradients: List[Tensor]): Unit =
+    parameters.zip(gradients).foreach {
       case (z, dz) =>
-        z - dz * learningRate
+        z -= dz * learningRate
     }
 }

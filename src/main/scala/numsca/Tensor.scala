@@ -7,7 +7,8 @@ import org.nd4j.linalg.ops.transforms.Transforms
 
 import scala.language.postfixOps
 
-class Tensor(val array: INDArray, val isBoolean: Boolean = false) {
+class Tensor(val array: INDArray, val isBoolean: Boolean = false)
+    extends Serializable {
 
   def data: Array[Double] = array.dup.data.asDouble
 

@@ -54,7 +54,7 @@ case class Network(gates: List[Gate] = List.empty,
               val shape = dimensions.slice(i - 2, i).reverse
               val linearGate = system.actorOf(
                 LinearGate.props(shape, next, regularization, optimizer()),
-                Linear.name(i))
+                Linear.name(i - 1))
               (linearGate, i - 1)
           }
       }

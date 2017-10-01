@@ -16,7 +16,7 @@ case class Adam(learningRate: Double,
   var ss = List.empty[Tensor]
 
   override def update(parameters: List[Tensor],
-                      gradients: List[Tensor]): List[Tensor] = {
+                      gradients: List[Tensor]): Unit = {
 
     // first time through
     // create the cache
@@ -27,12 +27,12 @@ case class Adam(learningRate: Double,
 
     t = t + 1
 
-    parameters.indices.map { i =>
+    parameters.indices.foreach { i =>
       update(parameters(i), gradients(i), vs(i), ss(i), t)
-    } toList
+    }
   }
 
-  def update(x: Tensor, dx: Tensor, m: Tensor, v: Tensor, t: Int): Tensor = {
+  def update(x: Tensor, dx: Tensor, m: Tensor, v: Tensor, t: Int): Unit = {
     m *= beta1
     m += (1 - beta1) * dx
     val mt = m / (1 - math.pow(beta1, t))
@@ -41,7 +41,7 @@ case class Adam(learningRate: Double,
     v += (1 - beta2) * numsca.square(dx)
     val vt = v / (1 - math.pow(beta2, t))
 
-    x - learningRate * mt / (numsca.sqrt(vt) + epsilon)
+    x -= learningRate * mt / (numsca.sqrt(vt) + epsilon)
   }
 
 }

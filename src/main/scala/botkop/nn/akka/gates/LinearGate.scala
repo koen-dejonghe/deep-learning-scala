@@ -1,49 +1,48 @@
 package botkop.nn.akka.gates
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.persistence.{PersistentActor, SnapshotMetadata, SnapshotOffer}
 import botkop.nn.akka.optimizers.Optimizer
 import numsca.Tensor
 
 import scala.language.postfixOps
 
 class LinearGate(shape: Array[Int],
-                 next: ActorRef,
-                 regularization: Double,
-                 optimizer: Optimizer,
-                 seed: Long = 231)
-    extends Actor {
+                           next: ActorRef,
+                           regularization: Double,
+                           var optimizer: Optimizer,
+                           seed: Long = 231)
+  extends PersistentActor
+    with ActorLogging {
 
   import org.nd4j.linalg.api.buffer.DataBuffer
   import org.nd4j.linalg.api.buffer.util.DataTypeUtil
-
   DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
 
   numsca.rand.setSeed(seed)
 
-  override def receive: Receive = {
-    val w = numsca.randn(shape) * math.sqrt(2.0 / shape(1))
-    val b = numsca.zeros(shape.head, 1)
-    accept(w, b)
-  }
+  val name: String = self.path.name
+  log.debug(s"my name is $name")
 
-  def activate(x: Tensor, w: Tensor, b: Tensor): Tensor = w.dot(x) + b
+  var w: Tensor = numsca.randn(shape) * math.sqrt(2.0 / shape(1))
+  var b: Tensor = numsca.zeros(shape.head, 1)
+  var cache: Option[(ActorRef, Tensor)] = None
 
-  def accept(w: Tensor,
-             b: Tensor,
-             cache: Option[(ActorRef, Tensor, Tensor)] = None): Receive = {
+  def activate(x: Tensor): Tensor = w.dot(x) + b
+
+  def accept(): Receive = {
 
     case Forward(x, y) =>
-      val z = activate(x, w, b)
-
+      val z = activate(x)
       next ! Forward(z, y)
-      context become accept(w, b, Some(sender(), x, y))
+      cache = Some(sender(), x)
 
     case Predict(x) =>
-      val z = activate(x, w, b)
+      val z = activate(x)
       next forward Predict(z)
 
     case Backward(dz) if cache isDefined =>
-      val (prev, a, _) = cache.get
+      val (prev, a) = cache.get
 
       val da = w.transpose.dot(dz)
       prev ! Backward(da)
@@ -51,15 +50,32 @@ class LinearGate(shape: Array[Int],
       val m = a.shape(1)
       val dw = dz.dot(a.T) / m
 
-      // adjusting regularization, if required
+      // adjusting regularization, if needed
       if (regularization != 0)
         dw += regularization * w
 
       val db = numsca.sum(dz, axis = 1) / m
 
-      val List(updatedW, updatedB) = optimizer.update(List(w, b), List(dw, db))
-      context become accept(updatedW, updatedB, cache)
+      optimizer.update(List(w, b), List(dw, db))
+
+    case Persist =>
+      log.debug(s"$name: persisting snapshot")
+      saveSnapshot(LinearState(w, b, optimizer))
+      next ! Persist
   }
+
+  override def receiveRecover: Receive = {
+    case SnapshotOffer(meta: SnapshotMetadata, snapshot: LinearState) =>
+      log.debug(s"$name: received snapshot ${meta.persistenceId}")
+      w = snapshot.w
+      b = snapshot.b
+      optimizer = snapshot.optimizer
+      accept()
+  }
+
+  override def persistenceId: String = name
+
+  override def receiveCommand: Receive = accept()
 
 }
 
@@ -70,3 +86,5 @@ object LinearGate {
             optimizer: Optimizer) =
     Props(new LinearGate(shape, next, regularization, optimizer))
 }
+
+case class LinearState(w: Tensor, b: Tensor, optimizer: Optimizer)
