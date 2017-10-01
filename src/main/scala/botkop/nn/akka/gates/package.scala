@@ -7,6 +7,7 @@ package object gates {
   case class Forward(x: Tensor, y: Tensor)
   case class Backward(dz: Tensor)
   case class Predict(x: Tensor)
+  case class Persist(filename: String)
 
   sealed trait Gate {
     def +(other: Gate): Network = Network(List(this, other))

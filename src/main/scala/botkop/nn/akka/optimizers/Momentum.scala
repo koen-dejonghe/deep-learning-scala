@@ -20,5 +20,6 @@ case class Momentum(learningRate: Double, beta: Double = 0.9)
         vs(i) += (1 - beta) * dz
         z - learningRate * vs(i)
     }
+
   }
 }

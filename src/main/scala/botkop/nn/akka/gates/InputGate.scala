@@ -36,7 +36,7 @@ class InputGate(first: ActorRef, miniBatchSize: Int, seed: Long) extends Actor {
     if (miniBatchSize >= m) {
       Forward(x, y)
     } else {
-      val samples = Random.shuffle((0 until m).toList).take(miniBatchSize)
+      val samples = Seq.fill(miniBatchSize)(Random.nextInt(m))
       // this is very slow
       // Forward(x(:>, samples), y(:>, samples))
 

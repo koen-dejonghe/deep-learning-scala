@@ -4,7 +4,6 @@ import numsca.Tensor
 
 import scala.language.postfixOps
 
-
 case class Adam(learningRate: Double,
                 beta1: Double = 0.9,
                 beta2: Double = 0.999,
@@ -29,23 +28,20 @@ case class Adam(learningRate: Double,
     t = t + 1
 
     parameters.indices.map { i =>
-      val p = parameters(i)
-      val dp = gradients(i)
-
-      vs(i) *= beta1
-      vs(i) += (1 - beta1) * dp
-
-      val vCorrected = vs(i) / (1 - math.pow(beta1, t))
-
-      ss(i) *= beta2
-      ss(i) += (1 - beta2) * numsca.square(dp)
-
-      val sCorrected = ss(i) / (1 - math.pow(beta2, t))
-
-      p + (-learningRate * vCorrected / (numsca.sqrt(sCorrected) + epsilon))
-
+      update(parameters(i), gradients(i), vs(i), ss(i), t)
     } toList
   }
 
-}
+  def update(x: Tensor, dx: Tensor, m: Tensor, v: Tensor, t: Int): Tensor = {
+    m *= beta1
+    m += (1 - beta1) * dx
+    val mt = m / (1 - math.pow(beta1, t))
 
+    v *= beta2
+    v += (1 - beta2) * numsca.square(dx)
+    val vt = v / (1 - math.pow(beta2, t))
+
+    x - learningRate * mt / (numsca.sqrt(vt) + epsilon)
+  }
+
+}

@@ -30,8 +30,8 @@ object MnistNetwork extends App with LazyLogging {
   // the optimizer is an object that contains state,
   // so must be recreated for each gate
   // hence this is a function call rather than a value
-  // def optimizer() = Momentum(learningRate = 0.3)
-  def optimizer() = Adam(learningRate = 0.0001)
+  def optimizer() = Nesterov(learningRate = 0.1)
+  // def optimizer() = Adam(learningRate = 0.0001)
 
   /*
   val layout = (Linear + Relu) * 2
@@ -69,22 +69,29 @@ object MnistNetwork extends App with LazyLogging {
   monitor()
 
   implicit val timeout: Timeout = Timeout(1 second) // needed for `?`
-  scala.io.StdIn.readLine()
 
-  (input ? Predict(xTest)).mapTo[Tensor].onComplete { d =>
-    val p = numsca.argmax(d.get, 0)
-    val writer = new BufferedWriter(
-      new OutputStreamWriter(
-        new FileOutputStream("kaggle-mnist-submission.csv")))
+  while(true) {
+    scala.io.StdIn.readLine()
 
-    p.data.zipWithIndex.foreach{ case (d, i) =>
-      writer.write(s"${i+1},${d.toInt}\n")
+    println("writing test result")
+
+    (input ? Predict(xTest)).mapTo[Tensor].onComplete { d =>
+      val p = numsca.argmax(d.get, 0)
+      val writer = new BufferedWriter(
+        new OutputStreamWriter(
+          new FileOutputStream("kaggle-mnist-submission.csv")))
+
+      writer.write(s"ImageId,Label\n")
+
+      p.data.zipWithIndex.foreach { case (n, i) =>
+        writer.write(s"${i + 1},${n.toInt}\n")
+      }
+
+      writer.close()
     }
-
-    writer.close()
   }
 
-  def monitor() = system.scheduler.schedule(5 seconds, 5 seconds) {
+  def monitor() = system.scheduler.schedule(10 seconds, 10 seconds) {
 
     (input ? Predict(xDev)).mapTo[Tensor].onComplete { d =>
       logger.info(s"accuracy on test set: ${accuracy(d.get, yDev)}")
