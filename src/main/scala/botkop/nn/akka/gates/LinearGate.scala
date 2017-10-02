@@ -1,18 +1,18 @@
 package botkop.nn.akka.gates
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.persistence.{PersistentActor, SnapshotMetadata, SnapshotOffer}
+import akka.persistence._
 import botkop.nn.akka.optimizers.Optimizer
 import numsca.Tensor
 
 import scala.language.postfixOps
 
 class LinearGate(shape: Array[Int],
-                           next: ActorRef,
-                           regularization: Double,
-                           var optimizer: Optimizer,
-                           seed: Long = 231)
-  extends PersistentActor
+                 next: ActorRef,
+                 regularization: Double,
+                 var optimizer: Optimizer,
+                 seed: Long = 231)
+    extends PersistentActor
     with ActorLogging {
 
   import org.nd4j.linalg.api.buffer.DataBuffer
@@ -58,8 +58,12 @@ class LinearGate(shape: Array[Int],
 
       optimizer.update(List(w, b), List(dw, db))
 
+    case ss: SaveSnapshotSuccess =>
+      deleteSnapshots(
+        SnapshotSelectionCriteria.create(ss.metadata.sequenceNr,
+                                         ss.metadata.timestamp - 1000))
+
     case Persist =>
-      log.debug(s"$name: persisting snapshot")
       saveSnapshot(LinearState(w, b, optimizer))
       next ! Persist
   }

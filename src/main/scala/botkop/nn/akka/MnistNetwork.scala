@@ -56,8 +56,8 @@ object MnistNetwork extends App with LazyLogging {
       .withMiniBatchSize(16)
       .init()
 
-  // val take = Some(1000)
-  val take = None
+  val take = Some(1000)
+  // val take = None
 
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xDev, yDev) = loadData("data/mnist_test.csv.gz", take)
