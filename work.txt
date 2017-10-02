@@ -36,4 +36,3 @@
 - save/load network
   - gates
   - parameters
-

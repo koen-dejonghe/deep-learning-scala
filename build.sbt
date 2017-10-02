@@ -12,12 +12,12 @@ classpathTypes += "maven-plugin"
 
 libraryDependencies += "org.nd4j" % "nd4j-native-platform" % "0.8.0"
 
-libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.3" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.3" % "test"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % akkaVersion
-
-// persistence
 libraryDependencies += "com.typesafe.akka" %% "akka-persistence" % akkaVersion
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % akkaVersion
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster-metrics" % akkaVersion
 
 // https://mvnrepository.com/artifact/com.typesafe.scala-logging/scala-logging_2.11
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2"

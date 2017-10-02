@@ -62,12 +62,12 @@ object MnistNetwork extends App with LazyLogging {
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xDev, yDev) = loadData("data/mnist_test.csv.gz", take)
 
-  val xTest =
-    readData("data/mnist-kaggle-test.csv", Array(28000, 784)).transpose
-
   input ! Forward(xTrain, yTrain)
 
   monitor()
+
+  val xTest =
+    readData("data/mnist-kaggle-test.csv", Array(28000, 784)).transpose
 
   implicit val timeout: Timeout = Timeout(1 second) // needed for `?`
 
