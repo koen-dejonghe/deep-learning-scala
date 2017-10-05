@@ -8,10 +8,9 @@ import scala.util.Random
 
 class InputGate(first: ActorRef, miniBatchSize: Int, seed: Long) extends Actor {
 
-  import org.nd4j.linalg.api.buffer.DataBuffer
-  import org.nd4j.linalg.api.buffer.util.DataTypeUtil
-
-  DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+  // import org.nd4j.linalg.api.buffer.DataBuffer
+  // import org.nd4j.linalg.api.buffer.util.DataTypeUtil
+  // DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
 
   Random.setSeed(seed)
 

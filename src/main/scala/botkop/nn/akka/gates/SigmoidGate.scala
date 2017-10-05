@@ -7,10 +7,9 @@ import scala.language.postfixOps
 
 class SigmoidGate(next: ActorRef) extends Actor {
 
-  import org.nd4j.linalg.api.buffer.DataBuffer
-  import org.nd4j.linalg.api.buffer.util.DataTypeUtil
-
-  DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+  // import org.nd4j.linalg.api.buffer.DataBuffer
+  // import org.nd4j.linalg.api.buffer.util.DataTypeUtil
+  // DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
 
 
   override def receive: Receive = accept()

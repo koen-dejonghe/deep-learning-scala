@@ -18,10 +18,9 @@ import scala.language.postfixOps
 
 object MnistNetwork extends App with LazyLogging {
 
-  import org.nd4j.linalg.api.buffer.DataBuffer
-  import org.nd4j.linalg.api.buffer.util.DataTypeUtil
-
-  DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+  // import org.nd4j.linalg.api.buffer.DataBuffer
+  // import org.nd4j.linalg.api.buffer.util.DataTypeUtil
+  // DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
 
   val system: ActorSystem = ActorSystem()
   import system.dispatcher
@@ -48,17 +47,17 @@ object MnistNetwork extends App with LazyLogging {
    */
 
   val (input, output) =
-    ((Linear + Relu + Dropout) * 2)
+    ((Linear + Relu + Dropout) * 2 + Linear)
     // ((Linear + Relu) * 2)
-      .withDimensions(784, 50, 10)
+      .withDimensions(784, 100, 50, 10)
       .withOptimizer(optimizer)
       .withCostFunction(softmaxCost)
       .withRegularization(1e-5)
-      .withMiniBatchSize(16)
+      .withMiniBatchSize(64)
       .init()
 
-  // val take = Some(1000)
-  val take = None
+  val take = Some(100)
+  // val take = None
 
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xDev, yDev) = loadData("data/mnist_test.csv.gz", take)
@@ -133,11 +132,11 @@ object MnistNetwork extends App with LazyLogging {
     }
 
     val (xData, yData) = lines
-      .foldLeft(List.empty[Double], List.empty[Double]) {
+      .foldLeft(List.empty[Float], List.empty[Float]) {
         case ((xs, ys), line) =>
           val tokens = line.split(",")
           val (y, x) =
-            (tokens.head.toDouble, tokens.tail.map(_.toDouble / 255.0).toList)
+            (tokens.head.toFloat, tokens.tail.map(_.toFloat / 255).toList)
           (x ::: xs, y :: ys)
       }
 
@@ -154,7 +153,7 @@ object MnistNetwork extends App with LazyLogging {
     val data = Source
       .fromFile(fileName)
       .getLines()
-      .map(_.split(",").map(_.toDouble / 255.0))
+      .map(_.split(",").map(_.toFloat / 255))
       .flatten
       .toArray
     Tensor(data).reshape(shape)

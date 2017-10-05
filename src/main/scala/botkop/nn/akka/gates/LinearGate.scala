@@ -15,9 +15,9 @@ class LinearGate(shape: Array[Int],
     extends PersistentActor
     with ActorLogging {
 
-  import org.nd4j.linalg.api.buffer.DataBuffer
-  import org.nd4j.linalg.api.buffer.util.DataTypeUtil
-  DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+  // import org.nd4j.linalg.api.buffer.DataBuffer
+  // import org.nd4j.linalg.api.buffer.util.DataTypeUtil
+  // DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
 
   numsca.rand.setSeed(seed)
 

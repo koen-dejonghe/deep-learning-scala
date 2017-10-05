@@ -20,7 +20,7 @@ class Tensor(val array: INDArray, val isBoolean: Boolean = false)
   def transpose = new Tensor(array.transpose())
   def T: Tensor = transpose
 
-  def round = Tensor(data.map(math.round(_).toDouble)).reshape(this.shape)
+  def round: Tensor = Tensor(data.map(math.round(_).toDouble)).reshape(this.shape)
 
   def dot(other: Tensor) = new Tensor(array mmul other.array)
 
@@ -160,6 +160,11 @@ class Tensor(val array: INDArray, val isBoolean: Boolean = false)
 object Tensor {
 
   def apply(data: Array[Double]): Tensor = {
+    val array = Nd4j.create(data)
+    new Tensor(array)
+  }
+
+  def apply(data: Array[Float]): Tensor = {
     val array = Nd4j.create(data)
     new Tensor(array)
   }
