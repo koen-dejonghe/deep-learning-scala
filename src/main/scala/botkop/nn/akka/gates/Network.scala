@@ -11,6 +11,7 @@ case class Network(gates: List[Gate] = List.empty,
                    optimizer: () => Optimizer = () =>
                      GradientDescent(learningRate = 0.01),
                    regularization: Double = 0.0,
+                   dropout: Double = 0.5,
                    maxIterations: Int = Int.MaxValue) {
 
   def +(other: Network) = Network(this.gates ++ other.gates)
@@ -24,6 +25,7 @@ case class Network(gates: List[Gate] = List.empty,
   def withOptimizer(o: () => Optimizer): Network = copy(optimizer = o)
   def withRegularization(reg: Double): Network = copy(regularization = reg)
   def withMaxIterations(max: Int): Network = copy(maxIterations = max)
+  def withDropout(p: Double): Network = copy(dropout = dropout)
 
   def init(): (ActorRef, ActorRef) = {
 
@@ -56,6 +58,11 @@ case class Network(gates: List[Gate] = List.empty,
                 LinearGate.props(shape, next, regularization, optimizer()),
                 Linear.name(i - 1))
               (linearGate, i - 1)
+
+            case Dropout =>
+              val gate =
+                system.actorOf(DropoutGate.props(next, dropout), Dropout.name(i))
+              (gate, i)
           }
       }
 

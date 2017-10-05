@@ -26,4 +26,8 @@ package object gates {
     def name(layer: Int) = s"linear-gate-$layer"
   }
 
+  case object Dropout extends Gate {
+    def name(layer: Int) = s"dropout-gate-$layer"
+  }
+
 }

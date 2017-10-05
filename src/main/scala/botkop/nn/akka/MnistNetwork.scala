@@ -29,8 +29,8 @@ object MnistNetwork extends App with LazyLogging {
   // the optimizer is an object that contains state,
   // so must be recreated for each gate
   // hence this is a function call rather than a value
-  def optimizer() = Nesterov(learningRate = 0.1)
-  // def optimizer() = Adam(learningRate = 0.0001)
+  // def optimizer() = Nesterov(learningRate = 0.1)
+  def optimizer() = Adam(learningRate = 0.0001)
 
   // def optimizer() = GradientDescent(learningRate = 0.3)
 
@@ -48,7 +48,8 @@ object MnistNetwork extends App with LazyLogging {
    */
 
   val (input, output) =
-    ((Linear + Relu) * 2)
+    ((Linear + Relu + Dropout) * 2)
+    // ((Linear + Relu) * 2)
       .withDimensions(784, 50, 10)
       .withOptimizer(optimizer)
       .withCostFunction(softmaxCost)
@@ -56,8 +57,8 @@ object MnistNetwork extends App with LazyLogging {
       .withMiniBatchSize(16)
       .init()
 
-  val take = Some(1000)
-  // val take = None
+  // val take = Some(1000)
+  val take = None
 
   val (xTrain, yTrain) = loadData("data/mnist_train.csv.gz", take)
   val (xDev, yDev) = loadData("data/mnist_test.csv.gz", take)
@@ -92,7 +93,7 @@ object MnistNetwork extends App with LazyLogging {
     }
   }
 
-  def monitor() = system.scheduler.schedule(5 seconds, 5 seconds) {
+  def monitor() = system.scheduler.schedule(0 seconds, 5 seconds) {
 
     (input ? Predict(xDev)).mapTo[Tensor].onComplete { d =>
       logger.info(s"accuracy on test set: ${accuracy(d.get, yDev)}")
