@@ -22,7 +22,7 @@ object MnistNetwork extends App with LazyLogging {
   // import org.nd4j.linalg.api.buffer.util.DataTypeUtil
   // DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
 
-  val system: ActorSystem = ActorSystem()
+  implicit val system: ActorSystem = ActorSystem()
   import system.dispatcher
 
   // the optimizer is an object that contains state,

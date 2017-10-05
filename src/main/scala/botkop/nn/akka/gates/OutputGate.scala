@@ -1,6 +1,7 @@
 package botkop.nn.akka.gates
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.cluster.pubsub.DistributedPubSub
 import numsca.Tensor
 
 class OutputGate(costFunction: (Tensor, Tensor) => (Double, Tensor),
@@ -9,9 +10,7 @@ class OutputGate(costFunction: (Tensor, Tensor) => (Double, Tensor),
     extends Actor
     with ActorLogging {
 
-  // import org.nd4j.linalg.api.buffer.DataBuffer
-  // import org.nd4j.linalg.api.buffer.util.DataTypeUtil
-  // DataTypeUtil.setDTypeForContext(DataBuffer.Type.DOUBLE)
+  val mediator: ActorRef = DistributedPubSub(context.system).mediator
 
   override def receive: Receive = accept()
 
@@ -33,6 +32,9 @@ class OutputGate(costFunction: (Tensor, Tensor) => (Double, Tensor),
     case Predict(x) =>
       /* end of the line: send the answer back */
       sender() ! x
+
+    case s: String =>
+      println(s"got $s")
   }
 }
 

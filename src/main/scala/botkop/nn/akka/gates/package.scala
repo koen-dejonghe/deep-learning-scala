@@ -1,5 +1,6 @@
 package botkop.nn.akka
 
+import akka.actor.ActorSystem
 import numsca.Tensor
 
 package object gates {
@@ -10,8 +11,10 @@ package object gates {
   case object Persist
 
   sealed trait Gate {
-    def +(other: Gate): Network = Network(List(this, other))
-    def *(i: Int): Network = Network(List.fill(i)(this))
+    def +(other: Gate)(implicit system: ActorSystem): Network =
+      Network(List(this, other))
+    def *(i: Int)(implicit system: ActorSystem): Network =
+      Network(List.fill(i)(this))
   }
 
   case object Relu extends Gate {
